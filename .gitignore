@@ -1,0 +1,6 @@
+.local/
+artifacts/
+*.user
+*.suo
+bin/
+obj/

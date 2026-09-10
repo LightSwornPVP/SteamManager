@@ -1,0 +1,35 @@
+param([string]$AppDirectory=(Join-Path $PSScriptRoot 'artifacts'))
+$ErrorActionPreference='Stop'
+$instructions=@'
+SteamManager - Deep North preview
+
+Target: Steam Valheim 1.0.7, build 25185596, Windows x64.
+
+Extract this entire folder. Keep the EXE and companion files together.
+Requires .NET Framework 4.7.2 or later (included with current Windows versions).
+
+1. Launch Valheim through Steam.
+2. Run SteamManager.exe and click Connect to Valheim.
+3. Enter a world to enable controls. All toggles start off.
+4. Ctrl+Alt+F12 disables runtime controls. Closing the app also resets them.
+
+No server installation or game-directory modification is required.
+When switching between trainer builds/folders, restart Valheim first.
+Numeric changes apply when enabling a feature or clicking Apply value.
+Food/rested duration: 0 freezes, 1 is normal, 2 lasts twice as long.
+Flight: use the game's movement, jump, and crouch controls.
+
+This is a tested single-player preview, not a claim of full compatibility.
+Multiplayer, boss/projectile edge cases, crafting/portal traversal, and actual
+Steam achievement delivery need further playtesting. Use a test save first.
+Spawned items, repairs, skill edits, and gameplay progress can persist in saves.
+Keep achievements enabled preserves eligibility; it does not award achievements.
+
+Source and detailed validation: https://github.com/LightSwornPVP/SteamManager
+'@
+Set-Content -LiteralPath (Join-Path $AppDirectory 'README.txt') -Value $instructions
+$names=@('SteamManager.exe','SteamManager.Runtime.dll','0Harmony.dll','game-assembly.sha256','Harmony-LICENSE.txt','README.txt')
+$files=foreach($name in $names){$path=Join-Path $AppDirectory $name;if(!(Test-Path -LiteralPath $path)){throw "Missing package file: $name"};$path}
+$zip=Join-Path $PSScriptRoot 'artifacts\SteamManager-DeepNorth-preview.zip'
+Compress-Archive -LiteralPath $files -DestinationPath $zip -Force
+Write-Output $zip
