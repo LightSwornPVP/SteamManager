@@ -21,7 +21,7 @@ Harmony patches `Game.Update` and `FejdStartup.Update` as main-thread command pu
 
 ## Compatibility
 
-Source was compiled against local Valheim 1.0.7 / Steam build 25185596. Live attachment, the authenticated communication channel, and all 23 control registrations passed testing. A single-player integration run completed 44 checks, followed by 26 direct gameplay behavior probes. Compilation and hook resolution alone do not establish gameplay correctness; see the validation report for remaining behavioral checks.
+Source was compiled against local Valheim 1.0.7 / Steam build 25185596. Live attachment, the authenticated communication channel, and all 53 control registrations passed testing. The expanded single-player runs completed 69 integration checks and 85 runtime behavior probes, plus 14 desktop interaction checks. Compilation and hook resolution alone do not establish gameplay correctness; see the validation report for remaining behavioral checks.
 
 Feature 49 patches the normal achievement eligibility query only. It does not call Steam unlock APIs, fabricate achievement events, or erase saved cheat flags. Real achievement earning still requires end-to-end verification.
 
@@ -32,3 +32,11 @@ Feature 49 patches the normal achievement eligibility query only. It does not ca
 - Mono embedding API: https://www.mono-project.com/docs/advanced/embedding/
 
 Game assemblies are used locally for compilation and inspection; they are excluded from version control and release packages. Decompiled inspection files stay under ignored `.local/`.
+
+## Expanded preview
+
+Protocol 2 uses `SteamManager.Valheim.v2.<pid>` and verifies a response version. Restart Valheim when upgrading, because managed assemblies already loaded in Mono cannot be replaced in place.
+
+`Extended.cs` owns the additional gameplay hooks and editors. Profiles validate every setting before applying; an apply failure restores previous control settings. Inventory selection uses runtime tokens referring to carried item instances, so removed or moved items are rejected. World bookmarks are stored by world UID. Global time scale, camera, and HUD state are captured when their override is first enabled and restored on disable/reset.
+
+Feature 50 enumerates Steam's live achievement definitions and state. A selected unlock requires `Confirmed=true`, validates the ID against that enumeration, and calls `SetAchievement` followed by `StoreStats`. Submission is distinguished from remote Steam synchronization. Feature 49 remains the separate normal-earning eligibility toggle. No achievement API writes are made by the test suite.

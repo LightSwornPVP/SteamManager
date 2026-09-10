@@ -61,6 +61,7 @@ namespace SteamManagerRuntime
             Patch(0, typeof(Game), "Update", null, "Pump");
             Patch(0, typeof(FejdStartup), "Update", null, "Pump");
             Hooks.Install();
+            Extended.Install();
             lastContact = DateTime.UtcNow.Ticks;
             new Thread(Serve) { IsBackground = true, Name = "SteamManager IPC" }.Start();
             Log("Runtime loaded; all gameplay controls start disabled.");
@@ -86,7 +87,7 @@ namespace SteamManagerRuntime
             {
                 try
                 {
-                    using (var pipe = new NamedPipeServerStream("SteamManager.Valheim." + Process.GetCurrentProcess().Id, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous))
+                    using (var pipe = new NamedPipeServerStream("SteamManager.Valheim.v2." + Process.GetCurrentProcess().Id, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous))
                     {
                         pipe.WaitForConnection();
                         using (var reader = new StreamReader(pipe))
@@ -125,6 +126,7 @@ namespace SteamManagerRuntime
                     {
                         walk = player.m_speed; run = player.m_runSpeed; swim = player.m_swimSpeed; jump = player.m_jumpForce;
                         initialFly = player.IsDebugFlying(); initialFree = player.NoCostCheat();
+                        Extended.Capture(player);
                         ComputeComfort();
                     }
                 }
@@ -149,6 +151,7 @@ namespace SteamManagerRuntime
                     if (On(3)) AccessTools.Field(typeof(Player), "m_stamina").SetValue(player, player.GetMaxStamina());
                     if (On(4)) AccessTools.Field(typeof(Player), "m_eitr").SetValue(player, player.GetMaxEitr());
                     if (On(30)) Repair(player);
+                    Extended.Tick(player);
                 }
             }
             catch (Exception e) { Log("Tick: " + e); Reset(); }
@@ -157,8 +160,18 @@ namespace SteamManagerRuntime
         {
             if (req.Command == "status") return Snapshot("Connected. Controls reset when changing characters or losing connection.");
             if (req.Command == "reset") { Reset(); return Snapshot("All runtime controls disabled. Saved item and skill changes remain."); }
+            if (req.Command == "achievements" || req.Command == "unlock-achievement") return Extended.AchievementCommand(req);
             var p = Player.m_localPlayer;
             if (p == null || p.IsDead()) throw new InvalidOperationException("Enter a world with a living character first.");
+            if(req.Command=="profile")
+            {
+                if(req.Settings==null||req.Settings.Count>100)throw new ArgumentException("Invalid profile.");
+                foreach(var f in req.Settings) Catalog.Validate(Features.Find(x=>x.Id==f.Id),f.Value);
+                var before=Features.Select(x=>new Feature{Id=x.Id,Enabled=x.Enabled,Value=x.Value}).ToList();
+                try { foreach(var f in Features)f.Enabled=false;foreach(var f in req.Settings){var target=Features.Find(x=>x.Id==f.Id);target.Enabled=f.Enabled;target.Value=f.Value;}Apply(p); }
+                catch { foreach(var f in before){var target=Features.Find(x=>x.Id==f.Id);target.Enabled=f.Enabled;target.Value=f.Value;}Apply(p);throw; }
+                return Snapshot("Profile applied.");
+            }
             if (req.Command == "diagnostics")
             {
                 var r = Snapshot("Read-only runtime measurements.");
@@ -234,20 +247,21 @@ namespace SteamManagerRuntime
                 skill.m_level = req.Value; skill.m_accumulator = 0;
                 return Snapshot(type + " set to " + req.Value + ". This change persists in saves.");
             }
-            throw new ArgumentException("Unknown command.");
+            return Extended.Command(req,p);
         }
-        static Response Snapshot(string message)
+        public static Response Snapshot(string message)
         {
             return new Response { Ok = true, Message = message, Version = global::Version.GetVersionString(), Player = Player.m_localPlayer == null ? null : Player.m_localPlayer.GetPlayerName(), Multiplayer = ZNet.instance != null && (!ZNet.instance.IsServer() || ZNet.IsOpenServer()), Features = Features };
         }
         static void Apply(Player p)
         {
-            p.m_speed = walk * (On(7) ? Value(7) : 1); p.m_runSpeed = run * (On(7) ? Value(7) : 1); p.m_swimSpeed = swim * (On(7) ? Value(7) : 1);
+            p.m_speed = walk * (On(7) ? Value(7) : 1); p.m_runSpeed = run * (On(51) ? Value(51) : On(7) ? Value(7) : 1); p.m_swimSpeed = swim * (On(52) ? Value(52) : On(7) ? Value(7) : 1);
             p.m_jumpForce = jump * (On(8) ? Value(8) : 1);
             p.SetNoPlacementCost(initialFree || On(36));
-            bool fly = initialFly || On(39);
+            bool fly = initialFly || On(39) || On(40);
             if (p.IsDebugFlying() != fly) p.ToggleDebugFly();
             AccessTools.Method(typeof(Player), "UpdateAvailablePiecesList").Invoke(p, null);
+            Extended.Apply(p);
         }
         public static void Reset()
         {
@@ -258,6 +272,7 @@ namespace SteamManagerRuntime
                 bool altered = Features.Any(x => x.Enabled);
                 foreach (var f in Features) f.Enabled = false;
                 if (altered && trackedPlayer != null) Apply(trackedPlayer);
+                Extended.RestoreGlobal();
             }
             catch (Exception e) { Log("Reset: " + e.Message); }
             finally { resetting = false; }

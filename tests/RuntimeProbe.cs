@@ -10,7 +10,7 @@ using UnityEngine;
 
 namespace SteamManagerRuntimeTests
 {
-    public static class Entry
+    public static partial class Entry
     {
         static int running;
         static Harmony patcher;
@@ -26,7 +26,11 @@ namespace SteamManagerRuntimeTests
         {
             var go=ObjectDB.instance.GetItemPrefab(prefab);if(go==null)throw new Exception("Missing test item "+prefab);
             var item=go.GetComponent<ItemDrop>().m_itemData.Clone();item.m_dropPrefab=go;item.m_stack=count;item.m_cheated=true;
-            if(!p.GetInventory().AddItem(item))throw new Exception("Test inventory is full.");added.Add(item);return item;
+            var inv=p.GetInventory();var slot=(Vector2i)AccessTools.Method(typeof(Inventory),"FindEmptySlot").Invoke(inv,new object[]{true});
+            if(slot.x<0)throw new Exception("Test inventory is full.");
+            var add=AccessTools.Method(typeof(Inventory),"AddItem",new[]{typeof(ItemDrop.ItemData),typeof(int),typeof(int),typeof(int),typeof(bool)});
+            if(!(bool)add.Invoke(inv,new object[]{item,count,slot.x,slot.y,false}))throw new Exception("Test inventory add failed.");
+            item=inv.GetItemAt(slot.x,slot.y);added.Add(item);return item;
         }
         static float Field(Player p,string name){return (float)AccessTools.Field(typeof(Player),name).GetValue(p);}
         static void Field(Player p,string name,float value){AccessTools.Field(typeof(Player),name).SetValue(p,value);}
@@ -93,6 +97,7 @@ namespace SteamManagerRuntimeTests
                 before=enemy.GetHealth();enemy.Damage(strike);float baseDamage=before-enemy.GetHealth();Check(baseDamage>0,"Normal outgoing creature damage executes");
                 strike=new HitData();strike.m_damage.m_blunt=1;strike.SetAttacker(p);before=enemy.GetHealth();Set(23,true,3);enemy.Damage(strike);Near(before-enemy.GetHealth(),baseDamage*3,"Outgoing damage multiplier changes actual creature damage");Set(23,false,1);
                 strike=new HitData();strike.m_damage.m_blunt=1;strike.SetAttacker(p);Set(25,true);enemy.Damage(strike);Check(enemy.GetHealth()<=0,"One-hit mode kills the test creature");Set(25,false);
+                ExtendedChecks(p);
             }
             catch(Exception e){error=e.GetBaseException().Message;}
             finally

@@ -50,9 +50,9 @@ namespace SteamManagerRuntime
         { if (Bridge.On(23) && !Bridge.On(25) && EnemyHit(__instance, hit)) hit.ApplyModifier(Bridge.Value(23)); }
         public static void OneHit(Character __instance, HitData hit)
         { if (Bridge.On(25) && EnemyHit(__instance, hit)) hit.m_damage.m_damage = Math.Max(100000f, __instance.GetMaxHealth() * 100); }
-        public static bool Stamina(Player __instance) { return !(Bridge.Local(__instance) && Bridge.On(3)); }
+        public static bool Stamina(Player __instance,ref float v) { if(Bridge.Local(__instance)&&Bridge.On(13))v*=Bridge.Value(13);return !(Bridge.Local(__instance) && Bridge.On(3)); }
         public static void HasStamina(Player __instance, ref bool __result) { if (Bridge.Local(__instance) && Bridge.On(3)) __result = true; }
-        public static bool Eitr(Player __instance) { return !(Bridge.Local(__instance) && Bridge.On(4)); }
+        public static bool Eitr(Player __instance,ref float v) { if(Bridge.Local(__instance)&&Bridge.On(14))v*=Bridge.Value(14);return !(Bridge.Local(__instance) && Bridge.On(4)); }
         public static void HasEitr(Player __instance, ref bool __result) { if (Bridge.Local(__instance) && Bridge.On(4)) __result = true; }
         public static void Carry(Player __instance, ref float __result) { if (Bridge.Local(__instance) && Bridge.On(6)) __result = Bridge.Value(6); }
         public static void Food(Player __instance, float dt, bool forceUpdate, float ___m_foodUpdateTimer)

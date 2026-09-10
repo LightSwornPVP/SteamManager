@@ -10,10 +10,9 @@ static class ProtocolTests
     static int Main()
     {
         var catalog=Catalog.Create();
-        int[] priorities={2,3,4,6,7,8,9,15,16,17,23,25,29,30,31,33,34,35,36,37,39,43,49};
-        Check(catalog.Select(x=>x.Id).SequenceEqual(priorities),"Priority coverage and order");
+        Check(catalog.Select(x=>x.Id).OrderBy(x=>x).SequenceEqual(Enumerable.Range(1,53)),"Complete feature coverage");
         Check(catalog.All(x=>!x.Enabled),"No gameplay changes enabled by default");
-        Check(catalog.Select(x=>x.Id).Distinct().Count()==23,"Unique feature IDs");
+        Check(catalog.Select(x=>x.Id).Distinct().Count()==53,"Unique feature IDs");
         foreach(var f in catalog.Where(x=>x.Numeric))
         {
             Catalog.Validate(f,f.Value);checks++;
@@ -28,7 +27,10 @@ static class ProtocolTests
         var copy=Wire.Decode<Request>(Wire.Encode(request));
         Check(copy.Text==request.Text&&copy.Quantity==20&&copy.Quality==3&&copy.Auth=="test","Request escaping and Unicode round trip");
         var response=Wire.Decode<Response>(Wire.Encode(new Response{Ok=true,Features=catalog,Message="ready"}));
-        Check(response.Ok&&response.Features.Count==23,"Runtime response round trip");
+        Check(response.Ok&&response.Features.Count==53&&response.Protocol==2,"Runtime response round trip");
+        Check(!new Request().Confirmed,"Achievement unlock never confirmed by default");
+        var profile=Wire.Decode<Request>(Wire.Encode(new Request{Command="profile",Settings=catalog.Where(x=>!x.Action).ToList()}));
+        Check(profile.Settings.Count==catalog.Count(x=>!x.Action),"Profile round trip");
         bool oversized=false;try{Wire.Decode<Request>(new string('x',2000001));}catch(System.IO.InvalidDataException){oversized=true;}Check(oversized,"Oversized payload rejected");
         Console.WriteLine(checks+" checks passed.");return 0;
     }

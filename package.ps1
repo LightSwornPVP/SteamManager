@@ -23,7 +23,11 @@ This is a tested single-player preview, not a claim of full compatibility.
 Multiplayer, boss/projectile edge cases, crafting/portal traversal, and actual
 Steam achievement delivery need further playtesting. Use a test save first.
 Spawned items, repairs, skill edits, and gameplay progress can persist in saves.
-Keep achievements enabled preserves eligibility; it does not award achievements.
+Keep achievements enabled preserves normal earning eligibility.
+Steam achievements menu: select one entry, choose Unlock selected, and confirm.
+This submits a permanent Steam account change. Tests do not award achievements.
+Profiles & hotkeys includes saved profiles and toggle/hold hotkey bindings.
+Saved locations, status effects, and carried inventory have dedicated menus.
 
 Source and detailed validation: https://github.com/LightSwornPVP/SteamManager
 '@

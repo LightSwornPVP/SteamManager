@@ -17,7 +17,7 @@ namespace SteamManagerDesktop
         public static Response Send(Request request)
         {
             request.Auth = File.ReadAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory,"runtime.token")).Trim();
-            using (var pipe = new NamedPipeClientStream(".", "SteamManager.Valheim." + ProcessId, PipeDirection.InOut, PipeOptions.Asynchronous))
+            using (var pipe = new NamedPipeClientStream(".", "SteamManager.Valheim.v2." + ProcessId, PipeDirection.InOut, PipeOptions.Asynchronous))
             {
                 pipe.Connect(1500);
                 using (var reader = new StreamReader(pipe))
@@ -26,7 +26,9 @@ namespace SteamManagerDesktop
                     writer.WriteLine(Wire.Encode(request));
                     var read = reader.ReadLineAsync();
                     if (!read.Wait(10000)) throw new TimeoutException("Game response timed out. Check status before repeating an action.");
-                    return Wire.Decode<Response>(read.Result);
+                    var response=Wire.Decode<Response>(read.Result);
+                    if(response.Protocol!=2)throw new InvalidOperationException("Trainer/runtime versions differ. Restart Valheim and use the matching build.");
+                    return response;
                 }
             }
         }

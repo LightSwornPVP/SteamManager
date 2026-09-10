@@ -9,7 +9,7 @@ using SteamManagerProtocol;
 
 namespace SteamManagerDesktop
 {
-    public sealed class MainForm : Form
+    public sealed partial class MainForm : Form
     {
         static readonly Color Background = Color.FromArgb(19,24,32), Card = Color.FromArgb(29,36,47), Accent = Color.FromArgb(102,220,188), Muted = Color.FromArgb(169,181,196);
         readonly Label connection = new Label(), message = new Label();
@@ -35,7 +35,7 @@ namespace SteamManagerDesktop
             Font = new Font("Segoe UI",10); Size = new Size(1120,880); MinimumSize = new Size(920,650); StartPosition = FormStartPosition.CenterScreen;
             var header = new Panel { Dock = DockStyle.Top, Width=ClientSize.Width, Height = 128, Padding = new Padding(24,18,24,10), BackColor = Card };
             var title = new Label { Text = "STEAMMANAGER", Font = new Font("Segoe UI Semibold",23), AutoSize = true, Location = new Point(24,12), ForeColor = Accent };
-            var subtitle = new Label { Text = "VALHEIM  /  DEEP NORTH     •     Phase 1 preview", AutoSize = true, Location = new Point(27,57), ForeColor = Muted };
+            var subtitle = new Label { Text = "VALHEIM  /  DEEP NORTH     •     Full feature preview", AutoSize = true, Location = new Point(27,57), ForeColor = Muted };
             connection.SetBounds(27,87,730,24); connection.Anchor=AnchorStyles.Left|AnchorStyles.Right|AnchorStyles.Top; connection.Text = "Launch Valheim, then connect. All features start off.";
             connect.Text = "Connect to Valheim"; connect.SetBounds(825,22,225,38); connect.Anchor = AnchorStyles.Top|AnchorStyles.Right; StyleButton(connect); connect.Click += async (s,e) => await Run(() => Client.Connect(),true);
             reset.Text = "Disable all  ·  Ctrl+Alt+F12"; reset.SetBounds(825,69,225,36); reset.Anchor = AnchorStyles.Top|AnchorStyles.Right; StyleButton(reset); reset.Enabled=false; reset.Click += async(s,e)=>await Send(new Request { Command="reset" });
@@ -53,8 +53,14 @@ namespace SteamManagerDesktop
                 foreach(var feature in state.Where(x=>x.Group==group)) AddFeature(flow,feature);
                 flow.SizeChanged += (s,e)=> { foreach(Control c in flow.Controls) c.Width=Math.Max(700,flow.ClientSize.Width-26); };
             }
-            BuildItems(); BuildSkills();
-            Controls.Add(tabs); Controls.Add(footer); Controls.Add(header);
+            BuildItems(); BuildSkills();BuildAdvanced();BuildSettings();
+            tabs.Appearance=TabAppearance.FlatButtons;tabs.SizeMode=TabSizeMode.Fixed;tabs.ItemSize=new Size(0,1);tabs.Multiline=true;
+            var navigation=new ListBox{Dock=DockStyle.Left,Width=205,BackColor=Card,ForeColor=Color.White,BorderStyle=BorderStyle.None,DrawMode=DrawMode.OwnerDrawFixed,ItemHeight=33};
+            foreach(TabPage page in tabs.TabPages)navigation.Items.Add(page.Text);
+            navigation.DrawItem+=(s,e)=>{if(e.Index<0)return;bool selected=(e.State&DrawItemState.Selected)!=0;using(var brush=new SolidBrush(selected?Color.FromArgb(40,76,76):Card))e.Graphics.FillRectangle(brush,e.Bounds);TextRenderer.DrawText(e.Graphics,navigation.Items[e.Index].ToString(),Font,new Rectangle(e.Bounds.X+12,e.Bounds.Y,e.Bounds.Width-16,e.Bounds.Height),selected?Accent:Color.White,TextFormatFlags.Left|TextFormatFlags.VerticalCenter|TextFormatFlags.NoPrefix);};
+            navigation.SelectedIndexChanged+=(s,e)=>{if(navigation.SelectedIndex>=0)tabs.SelectedIndex=navigation.SelectedIndex;};
+            tabs.SelectedIndexChanged+=(s,e)=>{navigation.SelectedIndex=tabs.SelectedIndex;};navigation.SelectedIndex=0;
+            Controls.Add(tabs);Controls.Add(navigation);Controls.Add(footer);Controls.Add(header);
             heartbeat.Tick += async(s,e)=> { if(connected&&!busy)await Run(()=>Client.Send(new Request { Command="status" }),false,true); };
             heartbeat.Start(); SetEnabled(false);
             FormClosing += OnClosing;
@@ -68,7 +74,7 @@ namespace SteamManagerDesktop
             {
                 var label=new Label { Text="#"+f.Id+"  "+f.Name, AutoSize=true, Location=new Point(17,17),Font=new Font(Font,FontStyle.Bold) };
                 var button=new ReadableButton { Text=f.Id==31?"Repair now":"Open",Location=new Point(814,10),Size=new Size(154,32),Anchor=AnchorStyles.Top|AnchorStyles.Right }; StyleButton(button);gameControls.Add(button);
-                button.Click+=async(s,e)=> { if(f.Id==31) await Send(new Request{Command="repair"}); else { tabs.SelectedTab=tabs.TabPages[f.Id==33?"items":"skills"]; await RefreshEntries(f.Id==33); } };
+                button.Click+=async(s,e)=>await OpenAction(f.Id);
                 row.Controls.AddRange(new Control[]{label,button});
             }
             else
@@ -81,7 +87,12 @@ namespace SteamManagerDesktop
                     var apply=new ReadableButton { Text="Apply value",Location=new Point(823,10),Size=new Size(145,32),Anchor=AnchorStyles.Top|AnchorStyles.Right };StyleButton(apply);gameControls.Add(apply);apply.Click+=async(s,e)=>await Send(new Request{Command="set",Id=f.Id,Enabled=toggle.Checked,Value=(float)number.Value});row.Controls.AddRange(new Control[]{number,apply});
                 }
                 toggle.CheckedChanged+=async(s,e)=> { if(!syncing)await Send(new Request{Command="set",Id=f.Id,Enabled=toggle.Checked,Value=values.ContainsKey(f.Id)?(float)values[f.Id].Value:0}); };
+                var restore=new ReadableButton{Text="Reset",Location=new Point(904,10),Size=new Size(64,32),Anchor=AnchorStyles.Top|AnchorStyles.Right};StyleButton(restore);gameControls.Add(restore);restore.Click+=async(s,e)=>{var original=Catalog.Create().Find(x=>x.Id==f.Id);await Send(new Request{Command="set",Id=f.Id,Enabled=false,Value=original.Value});};
+                if(f.Numeric){foreach(Control c in row.Controls){if(c is NumericUpDown)c.Left=649;if(c is Button){c.Left=784;c.Width=108;}}}
+                row.Controls.Add(restore);
+                if(f.Id==6){var presets=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Location=new Point(474,13),Width=150,Anchor=AnchorStyles.Top|AnchorStyles.Right};presets.Items.AddRange(new object[]{"Carry presets",300,1000,3000,10000});presets.SelectedIndex=0;presets.SelectedIndexChanged+=(s,e)=>{if(presets.SelectedItem is int)values[6].Value=(int)presets.SelectedItem;};row.Controls.Add(presets);}
             }
+            if(f.Numeric){row.Height=125;hint.Top=84;foreach(Control c in row.Controls){if(c is NumericUpDown)c.Top=45;else if(c is Button&&c.Text=="Apply value")c.Top=43;else if(c is ComboBox){c.Left=17;c.Top=45;c.Anchor=AnchorStyles.Top|AnchorStyles.Left;}}}
             row.Controls.Add(hint);flow.Controls.Add(row);
         }
         void BuildItems()
@@ -116,7 +127,7 @@ namespace SteamManagerDesktop
                 list.BeginUpdate();list.Items.Clear();foreach(var entry in r.Entries)list.Items.Add(items?entry.Name+"   ["+entry.Id+"]":entry.Name+"   —   "+entry.Value.ToString("0.0"));list.EndUpdate();
             });
         }
-        async Task Send(Request request) { if(request.Command=="set")editedNumbers.Remove(request.Id);await Run(()=>Client.Send(request)); }
+        async Task Send(Request request) { if(request.Command=="profile")held.Clear();if(request.Command=="reset"){held.Clear();pendingRequests.Clear();if(busy){resetRequested=true;return;}}if(busy){pendingRequests.Enqueue(request);return;}if(request.Command=="set")editedNumbers.Remove(request.Id);await Run(()=>Client.Send(request)); }
         async Task Run(Func<Response> action,bool isConnect=false,bool quiet=false,Action<Response> after=null)
         {
             if(busy)return;busy=true;connect.Enabled=false;SetEnabled(false);reset.Enabled=false;
@@ -126,6 +137,7 @@ namespace SteamManagerDesktop
                 var response=await Task.Run(action);
                 if(!response.Ok)throw new InvalidOperationException(response.Message);
                 connected=true;
+                lastPlayer=response.Player;
                 if(response.Features!=null)state=response.Features;
                 syncing=true;
                 foreach(var f in state){if(toggles.ContainsKey(f.Id))toggles[f.Id].Checked=f.Enabled;if(values.ContainsKey(f.Id)&&(isConnect||!editedNumbers.Contains(f.Id)))values[f.Id].Value=Math.Max(values[f.Id].Minimum,Math.Min(values[f.Id].Maximum,(decimal)f.Value));if(hints.ContainsKey(f.Id))hints[f.Id].Text=f.Error??f.Hint;}
@@ -139,25 +151,27 @@ namespace SteamManagerDesktop
             {
                 message.Text=e.GetBaseException().Message;
                 if(e is TimeoutException||e is System.IO.IOException||isConnect){connected=false;connection.Text="Disconnected. Runtime controls reset after 15 seconds without contact.";}
-                else SetEnabled(connected);
+                else SetEnabled(connected&&lastPlayer!=null);
                 syncing=true;foreach(var f in state)if(toggles.ContainsKey(f.Id))toggles[f.Id].Checked=f.Enabled;syncing=false;
             }
-            finally{busy=false;connect.Enabled=true;if(resetRequested&&connected){resetRequested=false;await Send(new Request{Command="reset"});}}
+            finally{busy=false;connect.Enabled=true;SetEnabled(connected&&lastPlayer!=null);if(resetRequested&&connected){resetRequested=false;pendingRequests.Clear();await Send(new Request{Command="reset"});}else if(connected&&pendingRequests.Count>0)await Send(pendingRequests.Dequeue());else if(!connected){pendingRequests.Clear();held.Clear();}}
         }
         void SetEnabled(bool enabled)
         {
             foreach(var c in gameControls)c.Enabled=enabled;
             foreach(var f in state)if(f.Error!=null&&toggles.ContainsKey(f.Id))toggles[f.Id].Enabled=false;
+            SetAdvancedEnabled(enabled);
         }
         protected override void OnHandleCreated(EventArgs e)
         { base.OnHandleCreated(e);if(!RegisterHotKey(Handle,1,0x4000|0x0002|0x0001,(uint)Keys.F12))message.Text="Disable-all hotkey is already in use; use the button."; }
         protected override void WndProc(ref Message m)
-        { if(m.Msg==0x0312&&m.WParam.ToInt32()==1&&connected){if(busy)resetRequested=true;else _=Send(new Request{Command="reset"});}base.WndProc(ref m); }
+        { if(m.Msg==0x0312&&m.WParam.ToInt32()==1&&connected){if(busy)resetRequested=true;else _=Send(new Request{Command="reset"});}else if(m.Msg==0x0312)HandleFeatureHotkey(m.WParam.ToInt32());base.WndProc(ref m); }
         async void OnClosing(object sender,FormClosingEventArgs e)
         {
             if(closing)return;
             e.Cancel=true;if(busy){message.Text="Wait for the pending game command before closing.";return;}
             heartbeat.Stop();UnregisterHotKey(Handle,1);
+            StopFeatureHotkeys();pendingRequests.Clear();
             if(connected)await Send(new Request{Command="reset"});
             closing=true;Close();
         }
