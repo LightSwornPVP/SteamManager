@@ -9,13 +9,13 @@ Extract this entire folder. Keep the EXE and companion files together.
 Requires .NET Framework 4.7.2 or later (included with current Windows versions).
 
 1. Launch Valheim through Steam.
-2. Run SteamManager.exe and click Connect to Valheim.
-3. Enter a world to enable controls. All toggles start off.
-4. Ctrl+Alt+F12 disables runtime controls. Closing the app also resets them.
+2. Run SteamManager.exe; it connects to Valheim automatically.
+3. Enter a world; your last saved toggle states and values restore.
+4. Ctrl+Alt+F12 disables runtime controls. Closing resets runtime controls but retains your saved settings.
 
 No server installation or game-directory modification is required.
 When switching between trainer builds/folders, restart Valheim first.
-Numeric changes apply when enabling a feature or clicking Apply value.
+Toggle and numeric changes apply live and save immediately.
 Food/rested duration: 0 freezes, 1 is normal, 2 lasts twice as long.
 Flight: use the game's movement, jump, and crouch controls.
 

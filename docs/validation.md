@@ -54,3 +54,9 @@ Use `test.ps1` for automated checks. Run `tests/Integration.ps1 -AllowPersistent
 Remaining expanded scenarios: complete death/respawn sequences (individual death hooks were tested), physical wall traversal with noclip, object destruction across all tree/ore/structure types (damage-prefix logic tested), placement edge cases, distant teleport loading/return, long camera/time sessions, native OS hotkey conflicts, and all multiplayer behavior. Tests of selected teleport persistence did not initiate a teleport. Destructive gameplay and edited save/account state are not reversible through Disable all.
 
 `tests/test-desktop.ps1 -AllowGameTestChanges` builds and runs the desktop interaction test against the connected disposable world; it toggles regeneration temporarily and resets controls, but never unlocks achievements. Requires the matching runtime to have been connected first.
+
+## Live settings update
+
+Ten additional live desktop checks passed against the existing runtime: automatic connection, immediate numeric/toggle application and persistence, rapid edits reaching the latest value, simulated lost-connection recovery with saved-setting restoration, exclusion of temporary held toggles, reset-on-close with retained preferences, automatic restoration after reopening, and persistent Disable all. Tests use an isolated preferences file and restore the previous runtime settings afterward. A complete Steam/game restart was not needed or performed; reconnection was exercised against the running game.
+
+Run `tests/test-desktop.ps1 -AllowGameTestChanges -LiveSettings` for this suite. The runtime assembly is unchanged; only the desktop needs replacing for this update.

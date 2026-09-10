@@ -29,15 +29,16 @@ namespace SteamManagerDesktop
         List<Feature> state = Catalog.Create();
         [DllImport("user32", SetLastError=true)] static extern bool RegisterHotKey(IntPtr hWnd,int id,uint modifiers,uint key);
         [DllImport("user32")] static extern bool UnregisterHotKey(IntPtr hWnd,int id);
-        public MainForm()
+        public MainForm(bool automatic=true,string settingsPath=null)
         {
+            automaticConnection=automatic;if(settingsPath!=null)preferencesPath=settingsPath;
             Text = "SteamManager • Valheim"; BackColor = Background; ForeColor = Color.White;
             Font = new Font("Segoe UI",10); Size = new Size(1120,880); MinimumSize = new Size(920,650); StartPosition = FormStartPosition.CenterScreen;
             var header = new Panel { Dock = DockStyle.Top, Width=ClientSize.Width, Height = 128, Padding = new Padding(24,18,24,10), BackColor = Card };
             var title = new Label { Text = "STEAMMANAGER", Font = new Font("Segoe UI Semibold",23), AutoSize = true, Location = new Point(24,12), ForeColor = Accent };
             var subtitle = new Label { Text = "VALHEIM  /  DEEP NORTH     •     Full feature preview", AutoSize = true, Location = new Point(27,57), ForeColor = Muted };
-            connection.SetBounds(27,87,730,24); connection.Anchor=AnchorStyles.Left|AnchorStyles.Right|AnchorStyles.Top; connection.Text = "Launch Valheim, then connect. All features start off.";
-            connect.Text = "Connect to Valheim"; connect.SetBounds(825,22,225,38); connect.Anchor = AnchorStyles.Top|AnchorStyles.Right; StyleButton(connect); connect.Click += async (s,e) => await Run(() => Client.Connect(),true);
+            connection.SetBounds(27,87,730,24); connection.Anchor=AnchorStyles.Left|AnchorStyles.Right|AnchorStyles.Top; connection.Text = "Waiting for Valheim — connects automatically.";
+            connect.Text = "Reconnect now"; connect.SetBounds(825,22,225,38); connect.Anchor = AnchorStyles.Top|AnchorStyles.Right; StyleButton(connect); connect.Click += async (s,e) => await Run(() => Client.Connect(),true);
             reset.Text = "Disable all  ·  Ctrl+Alt+F12"; reset.SetBounds(825,69,225,36); reset.Anchor = AnchorStyles.Top|AnchorStyles.Right; StyleButton(reset); reset.Enabled=false; reset.Click += async(s,e)=>await Send(new Request { Command="reset" });
             header.Controls.AddRange(new Control[]{title,subtitle,connection,connect,reset});
             var footer = new Panel { Dock=DockStyle.Bottom, Height=83, Padding=new Padding(24,10,24,8), BackColor=Card };
@@ -61,7 +62,8 @@ namespace SteamManagerDesktop
             navigation.SelectedIndexChanged+=(s,e)=>{if(navigation.SelectedIndex>=0)tabs.SelectedIndex=navigation.SelectedIndex;};
             tabs.SelectedIndexChanged+=(s,e)=>{navigation.SelectedIndex=tabs.SelectedIndex;};navigation.SelectedIndex=0;
             Controls.Add(tabs);Controls.Add(navigation);Controls.Add(footer);Controls.Add(header);
-            heartbeat.Tick += async(s,e)=> { if(connected&&!busy)await Run(()=>Client.Send(new Request { Command="status" }),false,true); };
+            heartbeat.Interval=2000;heartbeat.Tick += async(s,e)=>await PollConnection();
+            Shown+=async(s,e)=>{if(automaticConnection)await PollConnection();};
             heartbeat.Start(); SetEnabled(false);
             FormClosing += OnClosing;
         }
@@ -83,8 +85,8 @@ namespace SteamManagerDesktop
                 if(f.Numeric)
                 {
                     var number=new NumericUpDown { Minimum=(decimal)f.Min,Maximum=(decimal)f.Max,Value=(decimal)f.Value,DecimalPlaces=f.Id==6?0:2,Increment=f.Id==6?100:0.25m,Location=new Point(688,13),Width=122,Anchor=AnchorStyles.Top|AnchorStyles.Right,BackColor=Background,ForeColor=Color.White }; values[f.Id]=number;gameControls.Add(number);
-                    number.ValueChanged+=(s,e)=>{if(!syncing)editedNumbers.Add(f.Id);};
-                    var apply=new ReadableButton { Text="Apply value",Location=new Point(823,10),Size=new Size(145,32),Anchor=AnchorStyles.Top|AnchorStyles.Right };StyleButton(apply);gameControls.Add(apply);apply.Click+=async(s,e)=>await Send(new Request{Command="set",Id=f.Id,Enabled=toggle.Checked,Value=(float)number.Value});row.Controls.AddRange(new Control[]{number,apply});
+                    number.ValueChanged+=async(s,e)=>{if(!syncing){editedNumbers.Add(f.Id);await Send(new Request{Command="set",Id=f.Id,Enabled=toggle.Checked,Value=(float)number.Value});}};
+                    row.Controls.Add(number);
                 }
                 toggle.CheckedChanged+=async(s,e)=> { if(!syncing)await Send(new Request{Command="set",Id=f.Id,Enabled=toggle.Checked,Value=values.ContainsKey(f.Id)?(float)values[f.Id].Value:0}); };
                 var restore=new ReadableButton{Text="Reset",Location=new Point(904,10),Size=new Size(64,32),Anchor=AnchorStyles.Top|AnchorStyles.Right};StyleButton(restore);gameControls.Add(restore);restore.Click+=async(s,e)=>{var original=Catalog.Create().Find(x=>x.Id==f.Id);await Send(new Request{Command="set",Id=f.Id,Enabled=false,Value=original.Value});};
@@ -127,34 +129,61 @@ namespace SteamManagerDesktop
                 list.BeginUpdate();list.Items.Clear();foreach(var entry in r.Entries)list.Items.Add(items?entry.Name+"   ["+entry.Id+"]":entry.Name+"   —   "+entry.Value.ToString("0.0"));list.EndUpdate();
             });
         }
-        async Task Send(Request request) { if(request.Command=="profile")held.Clear();if(request.Command=="reset"){held.Clear();pendingRequests.Clear();if(busy){resetRequested=true;return;}}if(busy){pendingRequests.Enqueue(request);return;}if(request.Command=="set")editedNumbers.Remove(request.Id);await Run(()=>Client.Send(request)); }
+        async Task Send(Request request)
+        {
+            RememberRequest(request);
+            if(request.Command=="profile")held.Clear();
+            if(request.Command=="reset"){held.Clear();pendingRequests.Clear();if(busy){resetRequested=true;return;}}
+            if(busy){if(request.Command=="set"){var keep=pendingRequests.Where(x=>x.Command!="set"||x.Id!=request.Id).ToArray();pendingRequests.Clear();foreach(var item in keep)pendingRequests.Enqueue(item);}pendingRequests.Enqueue(request);return;}
+            if(request.Command=="set")editedNumbers.Remove(request.Id);
+            await Run(()=>Client.Send(request));
+        }
         async Task Run(Func<Response> action,bool isConnect=false,bool quiet=false,Action<Response> after=null)
         {
-            if(busy)return;busy=true;connect.Enabled=false;SetEnabled(false);reset.Enabled=false;
+            if(busy)return;busy=true;connect.Enabled=false;SetEnabled(false);reset.Enabled=connected;
+            if(connected&&lastPlayer!=null){foreach(var pair in toggles)pair.Value.Enabled=state.Find(x=>x.Id==pair.Key).Error==null;foreach(var number in values.Values)number.Enabled=true;}
             if(!quiet)message.Text=isConnect?"Connecting to the running game…":"Applying…";
             try
             {
                 var response=await Task.Run(action);
                 if(!response.Ok)throw new InvalidOperationException(response.Message);
+                bool enteringWorld=response.Player!=null&&(lastPlayer!=response.Player||isConnect||restoreSettings);
                 connected=true;
                 lastPlayer=response.Player;
+                if(enteringWorld&&preferences.LastSettings!=null)
+                {
+                    var settings=preferences.LastSettings.Where(x=>response.Features!=null&&response.Features.Any(f=>f.Id==x.Id&&f.Error==null)).ToList();
+                    var restored=await Task.Run(()=>Client.Send(new Request{Command="profile",Settings=settings}));
+                    if(!restored.Ok)throw new InvalidOperationException(restored.Message);
+                    response=restored;restoreSettings=false;
+                }
+                else if(enteringWorld){restoreSettings=false;preferences.LastSettings=CopySettings(response.Features);SaveLiveSettings();}
                 if(response.Features!=null)state=response.Features;
                 syncing=true;
-                foreach(var f in state){if(toggles.ContainsKey(f.Id))toggles[f.Id].Checked=f.Enabled;if(values.ContainsKey(f.Id)&&(isConnect||!editedNumbers.Contains(f.Id)))values[f.Id].Value=Math.Max(values[f.Id].Minimum,Math.Min(values[f.Id].Maximum,(decimal)f.Value));if(hints.ContainsKey(f.Id))hints[f.Id].Text=f.Error??f.Hint;}
+                foreach(var f in state){if(toggles.ContainsKey(f.Id)&&!pendingRequests.Any(x=>x.Command=="set"&&x.Id==f.Id))toggles[f.Id].Checked=f.Enabled;if(values.ContainsKey(f.Id)&&(!editedNumbers.Contains(f.Id)&&!pendingRequests.Any(x=>x.Command=="set"&&x.Id==f.Id)))values[f.Id].Value=Math.Max(values[f.Id].Minimum,Math.Min(values[f.Id].Maximum,(decimal)f.Value));if(hints.ContainsKey(f.Id))hints[f.Id].Text=f.Error??f.Hint;}
                 syncing=false;
                 connection.Text="Valheim "+response.Version+"  •  "+(response.Player??"Main menu — enter a world")+(response.Multiplayer?"  •  Multiplayer: behavior unverified":"");
-                if(!quiet)message.Text=response.Message;
+                if(!quiet||settingsSaveError!=null)message.Text=settingsSaveError??response.Message;
                 after?.Invoke(response);
                 SetEnabled(response.Player!=null);reset.Enabled=true;
             }
             catch(Exception e)
             {
                 message.Text=e.GetBaseException().Message;
-                if(e is TimeoutException||e is System.IO.IOException||isConnect){connected=false;connection.Text="Disconnected. Runtime controls reset after 15 seconds without contact.";}
+                if(e is TimeoutException||e is System.IO.IOException||isConnect){connected=false;restoreSettings=true;connection.Text="Waiting to reconnect automatically…";}
                 else SetEnabled(connected&&lastPlayer!=null);
-                syncing=true;foreach(var f in state)if(toggles.ContainsKey(f.Id))toggles[f.Id].Checked=f.Enabled;syncing=false;
+                syncing=true;foreach(var f in state)if(toggles.ContainsKey(f.Id)&&!pendingRequests.Any(x=>x.Command=="set"&&x.Id==f.Id))toggles[f.Id].Checked=f.Enabled;syncing=false;
             }
-            finally{busy=false;connect.Enabled=true;SetEnabled(connected&&lastPlayer!=null);if(resetRequested&&connected){resetRequested=false;pendingRequests.Clear();await Send(new Request{Command="reset"});}else if(connected&&pendingRequests.Count>0)await Send(pendingRequests.Dequeue());else if(!connected){pendingRequests.Clear();held.Clear();}}
+            finally
+            {
+                Request next=null;
+                if(resetRequested&&connected){resetRequested=false;pendingRequests.Clear();next=new Request{Command="reset"};}
+                else if(connected&&pendingRequests.Count>0)next=pendingRequests.Dequeue();
+                else if(!connected){pendingRequests.Clear();held.Clear();}
+                busy=false;
+                if(next!=null){if(next.Command=="set")editedNumbers.Remove(next.Id);await Run(()=>Client.Send(next));}
+                else{connect.Enabled=true;SetEnabled(connected&&lastPlayer!=null);}
+            }
         }
         void SetEnabled(bool enabled)
         {
@@ -165,14 +194,14 @@ namespace SteamManagerDesktop
         protected override void OnHandleCreated(EventArgs e)
         { base.OnHandleCreated(e);if(!RegisterHotKey(Handle,1,0x4000|0x0002|0x0001,(uint)Keys.F12))message.Text="Disable-all hotkey is already in use; use the button."; }
         protected override void WndProc(ref Message m)
-        { if(m.Msg==0x0312&&m.WParam.ToInt32()==1&&connected){if(busy)resetRequested=true;else _=Send(new Request{Command="reset"});}else if(m.Msg==0x0312)HandleFeatureHotkey(m.WParam.ToInt32());base.WndProc(ref m); }
+        { if(m.Msg==0x0312&&m.WParam.ToInt32()==1&&connected){_=Send(new Request{Command="reset"});}else if(m.Msg==0x0312)HandleFeatureHotkey(m.WParam.ToInt32());base.WndProc(ref m); }
         async void OnClosing(object sender,FormClosingEventArgs e)
         {
             if(closing)return;
             e.Cancel=true;if(busy){message.Text="Wait for the pending game command before closing.";return;}
-            heartbeat.Stop();UnregisterHotKey(Handle,1);
+            automaticConnection=false;heartbeat.Stop();UnregisterHotKey(Handle,1);
             StopFeatureHotkeys();pendingRequests.Clear();
-            if(connected)await Send(new Request{Command="reset"});
+            if(connected)await Run(()=>Client.Send(new Request{Command="reset"}));
             closing=true;Close();
         }
     }

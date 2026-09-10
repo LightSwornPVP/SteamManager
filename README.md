@@ -28,7 +28,7 @@ Requires Windows x64, Visual Studio C# Build Tools, .NET Framework 4.7.2 or late
 
 For another installation, pass `-GamePath 'D:\SteamLibrary\steamapps\common\Valheim'`. The executable and its companion files are produced in `artifacts/`. Keep the executable, runtime helper, Harmony library, and fingerprint file together.
 
-Launch Valheim, open the desktop app, and choose **Connect to Valheim**. Enter a world to enable gameplay controls. **Ctrl+Alt+F12** disables active runtime controls; closing the app also requests reset. Numeric edits take effect when you enable the feature or click **Apply value**. Food/rested duration `0` freezes the existing duration; `1` is normal.
+Launch Valheim and open the desktop app. It connects automatically and restores your last saved toggle states and numeric values when a character enters the world. Enter a world to enable gameplay controls. **Ctrl+Alt+F12** disables active runtime controls; closing the app also requests reset. Toggles and numeric edits apply live and save immediately; there is no Apply button. Food/rested duration `0` freezes the existing duration; `1` is normal.
 
 The item, inventory, and skill editors perform persistent save changes. The **Steam achievements** page loads names, descriptions, and locked/unlocked status from Steam; select an entry and choose **Unlock selected** to submit that achievement after confirmation. This affects the Steam account and is separate from the normal eligibility toggle. Use a disposable test character/world while this remains a prototype. No server or game-directory installation is required.
 
@@ -38,7 +38,7 @@ See [the feature checklist](docs/features.md). Saved inventory, skills, and worl
 
 ## Expanded controls
 
-- **Profiles & hotkeys:** apply Normal, Builder, Explorer, or Recovery, or save the current applied settings under a custom name. Profiles never apply automatically. Assign Ctrl/Alt combinations to individual toggles, optionally hold-to-enable. Release restores the previous enabled state and value. Ctrl+Alt+F12 clears active holds and disables all.
+- **Profiles & hotkeys:** apply Normal, Builder, Explorer, or Recovery, or save the current applied settings under a custom name. Named profiles apply when selected; the resulting settings save automatically and restore on the next connection. Assign Ctrl/Alt combinations to individual toggles, optionally hold-to-enable. Release restores the previous enabled state and value. Ctrl+Alt+F12 clears active holds and disables all.
 - **Status effects:** search installed effects, apply one with its normal duration or a custom duration in seconds, or remove an active effect.
 - **Carried inventory:** refresh, choose a stack, change its quantity within its game-defined limit, or repair that item.
 - **Saved locations:** save the current position under a name, teleport to a selected location, or return to the previous position. Lists are isolated by world ID.
@@ -46,3 +46,5 @@ See [the feature checklist](docs/features.md). Saved inventory, skills, and worl
 - **Gathering:** chopping/mining damage plus an independent mining override. Building protection takes priority over your one-hit object destruction.
 
 Desktop preferences and world location files live in `%LocalAppData%\SteamManager`. No death penalty preserves inventory and skills; food/effects and respawning still follow the game. Building restriction overrides do not grant materials; enable free crafting separately.
+
+The app checks for Valheim every two seconds and reconnects after lost contact or a new game process. First use adopts the current game controls; later launches restore your saved settings. Closing temporarily resets runtime controls while retaining saved preferences. **Disable all** also saves the disabled state. Hold-to-enable hotkeys are temporary and never save their held state. One-time actions such as item spawning, teleporting, and achievement unlocks are never replayed on reconnect. Game save files continue to use Valheim's normal save system.

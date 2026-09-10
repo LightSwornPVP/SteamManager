@@ -67,7 +67,7 @@ namespace SteamManagerDesktop
             if (args.Length == 2 && args[0] == "--render")
             {
                 Application.EnableVisualStyles(); Application.SetCompatibleTextRenderingDefault(false);
-                using (var form = new MainForm())
+                using (var form = new MainForm(false))
                 {
                     form.StartPosition=FormStartPosition.Manual;form.Location=new System.Drawing.Point(-20000,-20000);form.ShowInTaskbar=false;
                     form.Show();Application.DoEvents();
@@ -94,7 +94,13 @@ namespace SteamManagerDesktop
                 catch (Exception e) { System.Console.Error.WriteLine(e.GetBaseException().Message); return 1; }
             }
             Application.EnableVisualStyles(); Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new MainForm()); return 0;
+            bool first;
+            using(var instance=new System.Threading.Mutex(true,"Local\\SteamManager.Desktop.Live",out first))
+            {
+                if(!first){MessageBox.Show("SteamManager is already running. Use its existing window.","SteamManager");return 0;}
+                Application.Run(new MainForm());
+            }
+            return 0;
         }
     }
 }
