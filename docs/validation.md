@@ -64,3 +64,11 @@ Run `tests/test-desktop.ps1 -AllowGameTestChanges -LiveSettings` for this suite.
 ## Item discovery update
 
 Desktop and runtime compile against the installed Valheim assemblies; 133 protocol/data checks pass. Added checks cover distinct valid names, preserving existing pickup totals, filling zero/missing records, leaving unrelated records unchanged, and repeat-action idempotence. The desktop menu was rendered and inspected. The live character mutation was not executed during development: it changes persistent pickup records and could affect account achievement progress. Actual Steam crafting progress after this action remains unverified. Earlier live totals refer to the builds tested above.
+
+## Valheim 1.0.12 / build 25253764 — September 11
+
+Installed assembly SHA-256: `27A766A8D23A7BD8B6A54FB9AD0452A96C305FB3629B39C40527C09A1C393A84`.
+
+Both binaries compile and the helper attaches successfully to the running game. All 54 feature registrations report no errors. 133 protocol/data checks pass. Eight live checks pass: game bypass query, explicitly cheated-event eligibility, local pickup warning suppression during bypass, original bypass restoration, normal notification preservation when disabled, selected-repair notification correction, durability restoration, and preservation of item cheat flags. The probe intercepted inventory notifications and used a temporary unsaved inventory entry, removed in the same game-thread callback. It did not alter real inventory items, discovery history, or Steam achievements.
+
+Run `tests/build-probe.ps1 -EligibilityOnly -AppDirectory artifacts/update-1.0.12 -ProbeName SteamManager.BehaviorProbe1012.dll`, then its probe launcher, for the targeted suite. A new game build warrants further broad playtesting; successful registration does not establish all-feature gameplay compatibility. Steam award delivery remains unverified.

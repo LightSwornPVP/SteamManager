@@ -33,6 +33,8 @@ namespace SteamManagerRuntime
             Bridge.Patch(37, typeof(Player), "GetAvailableRecipes", postfix:"Recipes");
             Bridge.Patch(37, typeof(PieceTable), "UpdateAvailable", "Pieces");
             Bridge.Patch(43, typeof(Inventory), "IsTeleportable", postfix:"Portal");
+            Bridge.Patch(49, typeof(PlayerProfile), "get_s_bypassCheatChecks", postfix:"AchievementsAllowed");
+            Bridge.Patch(49, typeof(Inventory), "Changed", "CheatedItemNotification");
             Bridge.Patch(49, typeof(Achievements), "CanGetAchievements", postfix:"AchievementsAllowed");
         }
         static void Scope(Type type, string method)
@@ -99,6 +101,10 @@ namespace SteamManagerRuntime
         }
         public static void Portal(Inventory __instance, ref bool __result)
         { if (Player.m_localPlayer != null && __instance == Player.m_localPlayer.GetInventory() && Bridge.On(43)) __result = true; }
+        public static void CheatedItemNotification(Inventory __instance,ref bool cheatedStateChanged)
+        {
+            if(Bridge.On(49)&&PlayerProfile.s_bypassCheatChecks&&Player.m_localPlayer!=null&&__instance==Player.m_localPlayer.GetInventory())cheatedStateChanged=false;
+        }
         public static void AchievementsAllowed(ref bool __result) { if (Player.m_localPlayer != null && Bridge.On(49)) __result = true; }
     }
 }

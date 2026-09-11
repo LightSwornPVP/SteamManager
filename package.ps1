@@ -3,7 +3,7 @@ $ErrorActionPreference='Stop'
 $instructions=@'
 SteamManager - Deep North preview
 
-Target: Steam Valheim 1.0.7, build 25185596, Windows x64.
+Target: Steam Valheim 1.0.12, build 25253764, Windows x64.
 
 Extract this entire folder. Keep the EXE and companion files together.
 Requires .NET Framework 4.7.2 or later (included with current Windows versions).
@@ -23,7 +23,8 @@ This is a tested single-player preview, not a claim of full compatibility.
 Multiplayer, boss/projectile edge cases, crafting/portal traversal, and actual
 Steam achievement delivery need further playtesting. Use a test save first.
 Spawned items, repairs, skill edits, and gameplay progress can persist in saves.
-Keep achievements enabled preserves normal earning eligibility.
+Keep achievements enabled activates the game bypass while on and suppresses
+the blocked-pickup popup. Existing item and character cheat tags remain.
 Steam achievements menu: select one entry, choose Unlock selected, and confirm.
 This submits a permanent Steam account change. Tests do not award achievements.
 Profiles & hotkeys includes saved profiles and toggle/hold hotkey bindings.

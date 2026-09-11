@@ -1,0 +1,16 @@
+using System;using System.IO;using System.Linq;using System.Collections.Generic;using HarmonyLib;using UnityEngine;using SteamManagerRuntime;using SteamManagerProtocol;
+namespace SteamManagerRuntimeTests{public static class Entry{
+static Harmony test;static bool ran,lastFlag;static List<SteamManagerProtocol.Entry> passed=new List<SteamManagerProtocol.Entry>();
+public static void Start(){test=new Harmony("SteamManager.EligibilityValidation");test.Patch(AccessTools.Method(typeof(Game),"Update"),postfix:new HarmonyMethod(typeof(Entry),"Run"));var capture=new HarmonyMethod(typeof(Entry),"Capture");capture.priority=Priority.Last;test.Patch(AccessTools.Method(typeof(Inventory),"Changed"),prefix:capture);}
+public static bool Capture(Inventory __instance,bool cheatedStateChanged){if(Player.m_localPlayer==null||__instance!=Player.m_localPlayer.GetInventory())return true;lastFlag=cheatedStateChanged;return false;}
+static void Check(bool ok,string label){if(!ok)throw new Exception(label);passed.Add(new SteamManagerProtocol.Entry{Name=label});}
+public static void Run(){if(ran)return;ran=true;var p=Player.m_localPlayer;var feature=Bridge.Features.Single(x=>x.Id==49);bool enabled=feature.Enabled;ItemDrop.ItemData item=null;string error=null;try{
+if(p==null)throw new Exception("Living character required.");feature.Enabled=false;bool original=PlayerProfile.s_bypassCheatChecks;feature.Enabled=true;
+Check(PlayerProfile.s_bypassCheatChecks,"Achievement toggle activates game bypass query");Check(Achievements.CanGetAchievements(true),"Explicit cheated-item event passes eligibility while override active");
+var changed=AccessTools.Method(typeof(Inventory),"Changed");changed.Invoke(p.GetInventory(),new object[]{true,true});Check(!lastFlag,"Local pickup-blocked notification suppressed only during bypass");
+feature.Enabled=false;Check(PlayerProfile.s_bypassCheatChecks==original,"Disabling restores original game bypass result");changed.Invoke(p.GetInventory(),new object[]{true,true});Check(lastFlag,"Normal cheat notification preserved when override disabled");
+item=ObjectDB.instance.GetItemPrefab("Torch").GetComponent<ItemDrop>().m_itemData.Clone();item.m_durability=1;item.m_cheated=false;p.GetInventory().GetAllItems().Add(item);
+Extended.Command(new Request{Command="inventory"},p);var map=(Dictionary<string,ItemDrop.ItemData>)AccessTools.Field(typeof(Extended),"inventory").GetValue(null);string id=map.Single(x=>ReferenceEquals(x.Value,item)).Key;
+Extended.Command(new Request{Command="inventory-repair",Text=id},p);Check(!lastFlag,"Selected repair no longer reports a cheated-item pickup");Check(Math.Abs(item.m_durability-item.GetMaxDurability())<0.01,"Selected repair still restores durability");Check(!item.m_cheated,"Repair preserves item cheat flag");
+}catch(Exception e){error=e.GetBaseException().Message;}finally{feature.Enabled=enabled;if(item!=null&&p!=null)p.GetInventory().GetAllItems().Remove(item);test.UnpatchAll("SteamManager.EligibilityValidation");File.WriteAllText(Path.Combine(Path.GetDirectoryName(typeof(Entry).Assembly.Location),"eligibility-results.json"),Wire.Encode(new Response{Ok=error==null,Message=error??"Eligibility and notification checks passed without Steam writes.",Entries=passed}));}}
+}}

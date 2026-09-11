@@ -158,9 +158,10 @@ namespace SteamManagerRuntime
             if(req.Command=="inventory-edit"||req.Command=="inventory-repair")
             {
                 ItemDrop.ItemData item;if(!inventory.TryGetValue(req.Text??"",out item)||!p.GetInventory().ContainsItem(item))throw new InvalidOperationException("Item moved or removed. Refresh inventory.");
+                bool newCheatState=req.Command=="inventory-edit"&&!Achievements.IsCheatedAtAll();
                 if(req.Command=="inventory-edit"){if(req.Quantity<1||req.Quantity>Math.Max(1,item.m_shared.m_maxStackSize))throw new ArgumentException("Quantity exceeds this item's stack limit.");item.m_stack=req.Quantity;item.m_cheated=true;}
                 else item.m_durability=item.GetMaxDurability();
-                AccessTools.Method(typeof(Inventory),"Changed").Invoke(p.GetInventory(),new object[]{true,true});return Bridge.Snapshot("Selected item updated.");
+                AccessTools.Method(typeof(Inventory),"Changed").Invoke(p.GetInventory(),new object[]{true,newCheatState});return Bridge.Snapshot("Selected item updated.");
             }
             if(req.Command=="buffs")
             {

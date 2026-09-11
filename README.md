@@ -13,7 +13,7 @@ A Windows desktop trainer prototype for the Steam edition of Valheim, targeting 
 
 ## Status
 
-All **54 feature controls** are implemented against **Valheim 1.0.7 / Steam build 25185596**, including the full original list, independent sprint/swim/mining overrides, and the selected Steam achievement menu. The desktop also includes per-feature reset, carry presets, saved profiles, custom global hotkeys, and hold-to-enable bindings.
+All **54 feature controls** are implemented against **Valheim 1.0.12 / Steam build 25253764**, including the full original list, independent sprint/swim/mining overrides, and the selected Steam achievement menu. The desktop also includes per-feature reset, carry presets, saved profiles, custom global hotkeys, and hold-to-enable bindings.
 
 The original 23 controls passed single-player tests and user playtesting. The expanded build passes **127 automated protocol checks, 69 live integration checks, 85 runtime behavior checks, and 14 desktop interaction checks**. See [the validation report](docs/validation.md) for tested behavior and remaining limits. Multiplayer remains unverified.
 
@@ -56,3 +56,9 @@ Open **Item discovery** and refresh to inspect discovered item types and eligibl
 The action makes a JSON backup of known materials, known recipes, and pickup records in `%LocalAppData%\SteamManager\discovery-backups` before changing anything. The changes reach the character save through Valheim's normal saving. These records can affect pickup achievements when the game next evaluates them. The action is never replayed on reconnection. Keep feature 49 enabled for future crafting progress; previously missed crafts must be crafted again. Discovery is separate from the game's cheat flags, which this action does not erase.
 
 This update uses protocol 3 and needs one Valheim restart when replacing a previously loaded helper.
+
+## September 11 compatibility and achievement fix
+
+Updated the checked game fingerprint for Valheim 1.0.12 / Steam build 25253764. All 54 runtime features registered without errors. The 133 protocol/data checks and eight targeted live eligibility/notification checks passed on this build; earlier broad gameplay results refer to 1.0.7.
+
+Feature 49 now overrides the game's `s_bypassCheatChecks` query while active, in addition to the eligibility query, so the built-in achievement screen recognizes bypass mode. The local blocked-item pickup notification is suppressed only while this override is active. Disabling restores the game's original behavior without modifying its saved bypass key or item tags. Selected repair no longer passes an unconditional cheated-state-change flag to the inventory notification path. End-to-end Steam achievement delivery remains unverified; tests do not award achievements.

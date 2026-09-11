@@ -119,7 +119,7 @@ namespace SteamManagerProtocol
             F(46,"Game speed","Time & camera","Local simulation speed. Multiplayer can desynchronize; the server remains authoritative.",1,0.25f,3),
             F(47,"Hide HUD","Time & camera","Hides the gameplay HUD while active."),
             F(48,"Photo camera","Time & camera","Free camera with field of view below. Scroll changes movement speed.",65,10,120),
-            F(49,"Keep achievements enabled","Achievements","Keeps the normal achievement eligibility gate open. Does not award achievements."),
+            F(49,"Keep achievements enabled","Achievements","Enables the game achievement bypass and suppresses its blocked-item pickup warning. Existing cheat tags remain."),
             F(50,"Achievement browser","Achievements","Choose one Steam achievement to unlock. Unlocks persist on your Steam account.",action:true),
             F(51,"Sprint speed override","Player","Overrides the movement multiplier for sprinting only.",1,0.1f,10),
             F(52,"Swim speed override","Player","Overrides the movement multiplier for swimming only.",1,0.1f,10),
