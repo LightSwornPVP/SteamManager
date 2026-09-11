@@ -1,6 +1,6 @@
 # Feature checklist
 
-All original features 1–49 and additions 50–53 are implemented in preview-003. Implementation is distinct from scenario validation; see [validation](validation.md). No server installation is required.
+All original features 1â€“49 and additions 50â€“54 are implemented in preview-003. Implementation is distinct from scenario validation; see [validation](validation.md). No server installation is required.
 
 ## Player and survival
 
@@ -73,6 +73,8 @@ All original features 1–49 and additions 50–53 are implemented in preview-003. I
 - [x] 51. Independent sprint multiplier
 - [x] 52. Independent swim multiplier
 - [x] 53. Independent mining multiplier
+
+- [x] 54. Item discovery and ingredient/all-item pickup-record actions
 
 ## Desktop controls
 

@@ -87,7 +87,7 @@ namespace SteamManagerRuntime
             {
                 try
                 {
-                    using (var pipe = new NamedPipeServerStream("SteamManager.Valheim.v2." + Process.GetCurrentProcess().Id, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous))
+                    using (var pipe = new NamedPipeServerStream("SteamManager.Valheim.v3." + Process.GetCurrentProcess().Id, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous))
                     {
                         pipe.WaitForConnection();
                         using (var reader = new StreamReader(pipe))
@@ -163,6 +163,7 @@ namespace SteamManagerRuntime
             if (req.Command == "achievements" || req.Command == "unlock-achievement") return Extended.AchievementCommand(req);
             var p = Player.m_localPlayer;
             if (p == null || p.IsDead()) throw new InvalidOperationException("Enter a world with a living character first.");
+            if(req.Command=="discoveries"||req.Command=="discover-ingredients"||req.Command=="discover-all")return Discovery.Handle(req,p);
             if(req.Command=="profile")
             {
                 if(req.Settings==null||req.Settings.Count>100)throw new ArgumentException("Invalid profile.");

@@ -13,7 +13,7 @@ A Windows desktop trainer prototype for the Steam edition of Valheim, targeting 
 
 ## Status
 
-All **53 feature controls** are implemented against **Valheim 1.0.7 / Steam build 25185596**, including the full original list, independent sprint/swim/mining overrides, and the selected Steam achievement menu. The desktop also includes per-feature reset, carry presets, saved profiles, custom global hotkeys, and hold-to-enable bindings.
+All **54 feature controls** are implemented against **Valheim 1.0.7 / Steam build 25185596**, including the full original list, independent sprint/swim/mining overrides, and the selected Steam achievement menu. The desktop also includes per-feature reset, carry presets, saved profiles, custom global hotkeys, and hold-to-enable bindings.
 
 The original 23 controls passed single-player tests and user playtesting. The expanded build passes **127 automated protocol checks, 69 live integration checks, 85 runtime behavior checks, and 14 desktop interaction checks**. See [the validation report](docs/validation.md) for tested behavior and remaining limits. Multiplayer remains unverified.
 
@@ -48,3 +48,11 @@ See [the feature checklist](docs/features.md). Saved inventory, skills, and worl
 Desktop preferences and world location files live in `%LocalAppData%\SteamManager`. No death penalty preserves inventory and skills; food/effects and respawning still follow the game. Building restriction overrides do not grant materials; enable free crafting separately.
 
 The app checks for Valheim every two seconds and reconnects after lost contact or a new game process. First use adopts the current game controls; later launches restore your saved settings. Closing temporarily resets runtime controls while retaining saved preferences. **Disable all** also saves the disabled state. Hold-to-enable hotkeys are temporary and never save their held state. One-time actions such as item spawning, teleporting, and achievement unlocks are never replayed on reconnect. Game save files continue to use Valheim's normal save system.
+
+## Item discovery
+
+Open **Item discovery** and refresh to inspect discovered item types and eligible pickup counts at the current achievement difficulty. **Discover ingredients** covers enabled crafting recipes and building-piece resources. **Mark all items collected** covers available item definitions. Confirming either action adds missing discovery records and raises missing/zero pickup counts to one in raw, shared achievement, and current-difficulty records. Existing counts are never reduced, other difficulty tiers are untouched, and no inventory items or crafted-item counts are created.
+
+The action makes a JSON backup of known materials, known recipes, and pickup records in `%LocalAppData%\SteamManager\discovery-backups` before changing anything. The changes reach the character save through Valheim's normal saving. These records can affect pickup achievements when the game next evaluates them. The action is never replayed on reconnection. Keep feature 49 enabled for future crafting progress; previously missed crafts must be crafted again. Discovery is separate from the game's cheat flags, which this action does not erase.
+
+This update uses protocol 3 and needs one Valheim restart when replacing a previously loaded helper.

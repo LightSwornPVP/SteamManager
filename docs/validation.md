@@ -60,3 +60,7 @@ Remaining expanded scenarios: complete death/respawn sequences (individual death
 Ten additional live desktop checks passed against the existing runtime: automatic connection, immediate numeric/toggle application and persistence, rapid edits reaching the latest value, simulated lost-connection recovery with saved-setting restoration, exclusion of temporary held toggles, reset-on-close with retained preferences, automatic restoration after reopening, and persistent Disable all. Tests use an isolated preferences file and restore the previous runtime settings afterward. A complete Steam/game restart was not needed or performed; reconnection was exercised against the running game.
 
 Run `tests/test-desktop.ps1 -AllowGameTestChanges -LiveSettings` for this suite. The runtime assembly is unchanged; only the desktop needs replacing for this update.
+
+## Item discovery update
+
+Desktop and runtime compile against the installed Valheim assemblies; 133 protocol/data checks pass. Added checks cover distinct valid names, preserving existing pickup totals, filling zero/missing records, leaving unrelated records unchanged, and repeat-action idempotence. The desktop menu was rendered and inspected. The live character mutation was not executed during development: it changes persistent pickup records and could affect account achievement progress. Actual Steam crafting progress after this action remains unverified. Earlier live totals refer to the builds tested above.

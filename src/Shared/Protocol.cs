@@ -50,7 +50,7 @@ namespace SteamManagerProtocol
         [DataMember] public string Version;
         [DataMember] public string Player;
         [DataMember] public bool Multiplayer;
-        [DataMember] public int Protocol = 2;
+        [DataMember] public int Protocol = 3;
         [DataMember] public List<Feature> Features;
         [DataMember] public List<Entry> Entries;
     }
@@ -123,7 +123,8 @@ namespace SteamManagerProtocol
             F(50,"Achievement browser","Achievements","Choose one Steam achievement to unlock. Unlocks persist on your Steam account.",action:true),
             F(51,"Sprint speed override","Player","Overrides the movement multiplier for sprinting only.",1,0.1f,10),
             F(52,"Swim speed override","Player","Overrides the movement multiplier for swimming only.",1,0.1f,10),
-            F(53,"Mining speed override","Gathering","Overrides the gathering multiplier for pickaxe damage only.",1,0.1f,100)
+            F(53,"Mining speed override","Gathering","Overrides the gathering multiplier for pickaxe damage only.",1,0.1f,100),
+            F(54,"Item discovery","Achievements","Mark crafting ingredients or all available item types discovered and collected. Changes character records.",action:true)
         }; }
         public static void Validate(Feature f, float value)
         {

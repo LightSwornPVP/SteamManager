@@ -12,7 +12,7 @@ namespace SteamManagerRuntimeTests
     {
         static void ExtendedChecks(Player p)
         {
-            Bridge.Reset();Check(Bridge.Features.Count==53&&Bridge.Features.All(x=>x.Error==null),"All 53 features register without hook errors");
+            Bridge.Reset();Check(Bridge.Features.Count==54&&Bridge.Features.All(x=>x.Error==null),"All 54 features register without hook errors");
             bool god=p.InGodMode(),ghost=p.InGhostMode();Set(1,true);Check(p.InGodMode(),"God flag enabled");Set(1,false);Check(p.InGodMode()==god,"God flag restored");Set(5,true);Check(p.InGhostMode(),"Ghost flag enabled");Set(5,false);Check(p.InGhostMode()==ghost,"Ghost flag restored");
             foreach(int id in new[]{10,11,12}){string method=id==10?"ModifyHealthRegen":id==11?"ModifyStaminaRegen":"ModifyEitrRegen";var fn=AccessTools.Method(typeof(SEMan),method);object[] a={1f};fn.Invoke(p.GetSEMan(),a);float baseline=(float)a[0];Set(id,true,3);a=new object[]{1f};fn.Invoke(p.GetSEMan(),a);Near((float)a[0],baseline*3,"Regeneration hook "+id+" multiplies actual modifier");Set(id,false,1);}
             Field(p,"m_stamina",50);Set(13,true,0.5f);p.UseStamina(10);Near(p.GetStamina(),45,"Half stamina cost spends five for ten");Check(p.HaveStamina(60),"Stamina affordability uses modified cost");Set(13,false,1);

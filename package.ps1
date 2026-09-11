@@ -28,6 +28,9 @@ Steam achievements menu: select one entry, choose Unlock selected, and confirm.
 This submits a permanent Steam account change. Tests do not award achievements.
 Profiles & hotkeys includes saved profiles and toggle/hold hotkey bindings.
 Saved locations, status effects, and carried inventory have dedicated menus.
+Item discovery can mark ingredients or all item types discovered/collected.
+It backs up records first; it does not count prior crafts or add inventory.
+Restart Valheim once after upgrading from an older helper.
 
 Source and detailed validation: https://github.com/LightSwornPVP/SteamManager
 '@

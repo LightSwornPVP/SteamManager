@@ -47,6 +47,15 @@ namespace SteamManagerDesktop
             ActionButton(inventory,"Set stack quantity","inventory-edit",()=>new Request{Text=inventory.Selected?.Id,Quantity=(int)count.Value});ActionButton(inventory,"Repair selected","inventory-repair");
             var buffs=Browser("buffs","Status effects");var duration=new NumericUpDown{Minimum=0,Maximum=86400,Width=100};buffs.Actions.Controls.Add(new Label{Text="Seconds (0 = default)",AutoSize=true});buffs.Actions.Controls.Add(duration);ActionButton(buffs,"Apply selected effect","buff-add",()=>new Request{Text=buffs.Selected?.Id,Value=(float)duration.Value});ActionButton(buffs,"Remove selected effect","buff-remove");
             var locations=Browser("locations","Saved locations");var name=new TextBox{Width=240,MaxLength=80};locations.Actions.Controls.Add(name);ActionButton(locations,"Save current location","save-location",()=>new Request{Text=name.Text});ActionButton(locations,"Teleport to selected","teleport");ActionButton(locations,"Delete selected","delete-location");var back=Button("Return to previous",()=>Send(new Request{Command="return"}));locations.Actions.Controls.Add(back);gameControls.Add(back);
+            var discovery=Browser("discoveries","Item discovery");
+            foreach(var action in new[]{new[]{"Discover ingredients","discover-ingredients"},new[]{"Mark all items collected","discover-all"}})
+            {
+                string command=action[1];var button=Button(action[0],async()=>{
+                    string scope=command=="discover-all"?"all available item types":"all crafting and building ingredients";
+                    if(MessageBox.Show(this,"Mark "+scope+" discovered and collected for this character? Existing counts are preserved and a backup is created. This changes character records and may affect pickup achievements. It does not count earlier crafts; craft those items again with Keep achievements enabled.","Update item discovery",MessageBoxButtons.YesNo,MessageBoxIcon.Question)!=DialogResult.Yes)return;
+                    await Run(()=>Client.Send(new Request{Command=command,Confirmed=true}),false,false,r=>{discovery.Entries=r.Entries??discovery.Entries;discovery.Filter();});
+                });button.Width=220;discovery.Actions.Controls.Add(button);gameControls.Add(button);
+            }
             var achievements=Browser("achievements","Steam achievements");unlock=Button("Unlock selected",async()=>{var selected=achievements.Selected;if(selected==null||selected.Unlocked)return;if(MessageBox.Show(this,"Unlock ‘"+selected.Name+"’ on your Steam account? This account change is permanent.","Unlock selected achievement",MessageBoxButtons.YesNo,MessageBoxIcon.Question)!=DialogResult.Yes)return;await Run(()=>Client.Send(new Request{Command="unlock-achievement",Text=selected.Id,Confirmed=true}),false,false,r=>{achievements.Entries=r.Entries??achievements.Entries;achievements.Filter();});});achievements.Actions.Controls.Add(unlock);achievementControls.Add(unlock);
         }
         void UpdateUnlock(){if(unlock!=null)unlock.Enabled=connected&&!busy&&browsers["achievements"].Selected!=null&&!browsers["achievements"].Selected.Unlocked;}
@@ -55,7 +64,7 @@ namespace SteamManagerDesktop
         {
             if(id==31||id==42){await Send(new Request{Command=id==31?"repair":"return"});return;}
             if(id==33||id==35){tabs.SelectedTab=tabs.TabPages[id==33?"items":"skills"];await RefreshEntries(id==33);return;}
-            string command=id==18?"buffs":id==32?"inventory":id==41?"locations":"achievements";var browser=browsers[command];tabs.SelectedTab=browser.Page;await RefreshBrowser(browser);
+            string command=id==54?"discoveries":id==18?"buffs":id==32?"inventory":id==41?"locations":"achievements";var browser=browsers[command];tabs.SelectedTab=browser.Page;await RefreshBrowser(browser);
         }
         DesktopPreferences preferences=new DesktopPreferences();
         readonly string preferencesPath=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"SteamManager","desktop.json");

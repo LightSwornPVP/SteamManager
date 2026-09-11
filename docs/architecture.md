@@ -35,7 +35,7 @@ Game assemblies are used locally for compilation and inspection; they are exclud
 
 ## Expanded preview
 
-Protocol 2 uses `SteamManager.Valheim.v2.<pid>` and verifies a response version. Restart Valheim when upgrading, because managed assemblies already loaded in Mono cannot be replaced in place.
+Protocol 3 uses `SteamManager.Valheim.v3.<pid>` and verifies a response version. Restart Valheim when upgrading, because managed assemblies already loaded in Mono cannot be replaced in place.
 
 `Extended.cs` owns the additional gameplay hooks and editors. Profiles validate every setting before applying; an apply failure restores previous control settings. Inventory selection uses runtime tokens referring to carried item instances, so removed or moved items are rejected. World bookmarks are stored by world UID. Global time scale, camera, and HUD state are captured when their override is first enabled and restored on disable/reset.
 

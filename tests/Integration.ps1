@@ -11,7 +11,7 @@ $sessionSecret = (Get-Content -LiteralPath (Join-Path $AppDirectory 'runtime.tok
 $checks = [System.Collections.Generic.List[string]]::new()
 function Send-Game([hashtable]$Request) {
     $Request.Auth = $sessionSecret
-    $pipe = [System.IO.Pipes.NamedPipeClientStream]::new('.', ('SteamManager.Valheim.v2.' + $gameProcessId), [System.IO.Pipes.PipeDirection]::InOut, [System.IO.Pipes.PipeOptions]::Asynchronous)
+    $pipe = [System.IO.Pipes.NamedPipeClientStream]::new('.', ('SteamManager.Valheim.v3.' + $gameProcessId), [System.IO.Pipes.PipeDirection]::InOut, [System.IO.Pipes.PipeOptions]::Asynchronous)
     try {
         $pipe.Connect(1500)
         $reader = [System.IO.StreamReader]::new($pipe)
@@ -31,7 +31,7 @@ $originalSkill = $null
 try {
     $status = Send-Game @{Command='status'}
     Check ($null -ne $status.Player -and !$status.Multiplayer) 'Single-player test character is loaded'
-    Check ($status.Features.Count -eq 53 -and @($status.Features | Where-Object Error).Count -eq 0) 'All 53 feature hook registrations are available'
+    Check ($status.Features.Count -eq 54 -and @($status.Features | Where-Object Error).Count -eq 0) 'All 54 feature hook registrations are available'
     $null = Send-Game @{Command='reset'}
     $baseline = Read-Measurements
     foreach($feature in $status.Features | Where-Object { !$_.Action }) {
