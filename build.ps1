@@ -25,7 +25,7 @@ Copy-Item -LiteralPath (Join-Path $harmonyDir 'LICENSE') -Destination (Join-Path
 $hash = (Get-FileHash -LiteralPath (Join-Path $managed 'assembly_valheim.dll') -Algorithm SHA256).Hash
 Set-Content -LiteralPath (Join-Path $outDir 'game-assembly.sha256') -Value $hash -Encoding ascii
 $common = Join-Path $projectRoot 'src\Shared\Protocol.cs'
-$helperRefs = @('mscorlib.dll','System.dll','System.Core.dll','System.Runtime.Serialization.dll','netstandard.dll','assembly_valheim.dll','assembly_utils.dll','assembly_guiutils.dll','com.rlabrecque.steamworks.net.dll','UnityEngine.CoreModule.dll','UnityEngine.PhysicsModule.dll','UnityEngine.AnimationModule.dll','UnityEngine.dll')
+$helperRefs = @('mscorlib.dll','System.dll','System.Core.dll','System.Runtime.Serialization.dll','netstandard.dll','assembly_valheim.dll','assembly_utils.dll','assembly_guiutils.dll','Splatform.dll','com.rlabrecque.steamworks.net.dll','UnityEngine.CoreModule.dll','UnityEngine.PhysicsModule.dll','UnityEngine.AnimationModule.dll','UnityEngine.dll')
 $argsHelper = @('/nologo','/target:library','/platform:x64','/optimize+','/langversion:latest','/nostdlib+',('/out:' + (Join-Path $outDir 'SteamManager.Runtime.dll')),('/reference:' + (Join-Path $outDir '0Harmony.dll')))
 foreach ($reference in $helperRefs) { $argsHelper += '/reference:' + (Join-Path $managed $reference) }
 $argsHelper += $common

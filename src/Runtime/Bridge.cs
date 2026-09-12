@@ -164,6 +164,7 @@ namespace SteamManagerRuntime
             var p = Player.m_localPlayer;
             if (p == null || p.IsDead()) throw new InvalidOperationException("Enter a world with a living character first.");
             if(req.Command=="discoveries"||req.Command=="discover-ingredients"||req.Command=="discover-all")return Discovery.Handle(req,p);
+            if(req.Command!=null&&req.Command.StartsWith("map-",StringComparison.Ordinal))return MapTools.Handle(req,p);
             if(req.Command=="profile")
             {
                 if(req.Settings==null||req.Settings.Count>100)throw new ArgumentException("Invalid profile.");

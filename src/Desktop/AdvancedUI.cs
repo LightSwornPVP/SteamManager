@@ -23,7 +23,7 @@ namespace SteamManagerDesktop
             public string Command; public TabPage Page; public ListBox List; public Label Detail; public TextBox Search; public FlowLayoutPanel Actions;
             public List<Entry> Entries=new List<Entry>(),Visible=new List<Entry>();
             public Entry Selected=>List.SelectedIndex<0||List.SelectedIndex>=Visible.Count?null:Visible[List.SelectedIndex];
-            public void Filter(){string id=Selected?.Id;Visible=Entries.Where(x=>((x.Name??"")+" "+x.Id+" "+x.Description).IndexOf(Search.Text,StringComparison.OrdinalIgnoreCase)>=0).ToList();List.Items.Clear();foreach(var e in Visible)List.Items.Add((Command=="achievements"?(e.Unlocked?"✓ Unlocked  ·  ":"Locked  ·  "):Command=="buffs"&&e.Unlocked?"Active  ·  ":"")+e.Name+(Command=="inventory"?"  ×"+e.Value:""));int index=Visible.FindIndex(x=>x.Id==id);if(index>=0)List.SelectedIndex=index;Detail.Text=Selected?.Description??"Select an entry.";}
+            public void Filter(){string id=Selected?.Id;Visible=Entries.Where(x=>(Command=="map-results"?(x.Name??""):((x.Name??"")+" "+x.Id+" "+x.Description)).IndexOf(Search.Text,StringComparison.OrdinalIgnoreCase)>=0).ToList();List.Items.Clear();foreach(var e in Visible)List.Items.Add((Command=="achievements"?(e.Unlocked?"✓ Unlocked  ·  ":"Locked  ·  "):Command=="buffs"&&e.Unlocked?"Active  ·  ":"")+e.Name+(Command=="inventory"?"  ×"+e.Value:""));int index=Visible.FindIndex(x=>x.Id==id);if(index>=0)List.SelectedIndex=index;Detail.Text=Selected?.Description??"Select an entry.";}
         }
         readonly Dictionary<string,BrowserPage> browsers=new Dictionary<string,BrowserPage>();
         readonly List<Control> achievementControls=new List<Control>();
@@ -43,6 +43,7 @@ namespace SteamManagerDesktop
         async Task RefreshBrowser(BrowserPage b){await Run(()=>Client.Send(new Request{Command=b.Command}),false,false,r=>{b.Entries=r.Entries??new List<Entry>();b.Filter();});}
         void BuildAdvanced()
         {
+            BuildMapTools();
             var inventory=Browser("inventory","Carried inventory");var count=new NumericUpDown{Minimum=1,Maximum=100000,Value=1,Width=90};inventory.Actions.Controls.Add(count);inventory.List.SelectedIndexChanged+=(s,e)=>{if(inventory.Selected!=null){count.Maximum=Math.Max(1,inventory.Selected.Max);count.Value=Math.Max(1,Math.Min(count.Maximum,(decimal)inventory.Selected.Value));}};
             ActionButton(inventory,"Set stack quantity","inventory-edit",()=>new Request{Text=inventory.Selected?.Id,Quantity=(int)count.Value});ActionButton(inventory,"Repair selected","inventory-repair");
             var buffs=Browser("buffs","Status effects");var duration=new NumericUpDown{Minimum=0,Maximum=86400,Width=100};buffs.Actions.Controls.Add(new Label{Text="Seconds (0 = default)",AutoSize=true});buffs.Actions.Controls.Add(duration);ActionButton(buffs,"Apply selected effect","buff-add",()=>new Request{Text=buffs.Selected?.Id,Value=(float)duration.Value});ActionButton(buffs,"Remove selected effect","buff-remove");
