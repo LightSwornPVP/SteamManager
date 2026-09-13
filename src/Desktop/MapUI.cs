@@ -32,6 +32,16 @@ namespace SteamManagerDesktop
             action("Pin matching names",new Request{Command="map-pin-filter"});
             action("Remove my pins",new Request{Command="map-clear"});
             action("Reveal entire map",new Request{Command="map-reveal"});
+            foreach(bool copy in new[]{false,true})
+            {
+                var button=Button(copy?"Copy seed":"Show seed",async()=>{
+                    await Run(()=>Client.Send(new Request{Command="map-seed"}),false,false,r=>{
+                        if(string.IsNullOrEmpty(r.WorldSeed))throw new InvalidOperationException("This helper does not provide the seed. Restart Valheim after updating SteamManager.");
+                        if(copy){Clipboard.SetText(r.WorldSeed);message.Text="Current world seed copied to clipboard.";}
+                        else MessageBox.Show(this,"World: "+r.WorldName+Environment.NewLine+Environment.NewLine+"Seed: "+r.WorldSeed,"Current world seed",MessageBoxButtons.OK,MessageBoxIcon.Information);
+                    });
+                });page.Actions.Controls.Add(button);gameControls.Add(button);
+            }
             page.Detail.Text="Scan, then search by prefab name (for example Crypt, Cave, or Copper). World scans use local world records or server-provided markers. Resource scans cover loaded objects within 200 m. Pins last for this game session.";
         }
     }

@@ -49,6 +49,8 @@ namespace SteamManagerProtocol
         [DataMember] public string Message;
         [DataMember] public string Version;
         [DataMember] public string Player;
+        [DataMember] public string WorldSeed;
+        [DataMember] public string WorldName;
         [DataMember] public bool Multiplayer;
         [DataMember] public int Protocol = 3;
         [DataMember] public List<Feature> Features;

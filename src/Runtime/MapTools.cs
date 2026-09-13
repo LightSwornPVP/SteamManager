@@ -37,6 +37,15 @@ namespace SteamManagerRuntime
         }
         public static Response Handle(Request req,Player player)
         {
+            if(req.Command=="map-seed")
+            {
+                var currentWorld=ZNet.instance==null?null:ZNet.instance.GetWorld();
+                if(currentWorld==null||string.IsNullOrEmpty(currentWorld.m_seedName))throw new InvalidOperationException("The current world's seed is unavailable. Enter a world and try again.");
+                var seedResponse=Bridge.Snapshot("World seed retrieved.");
+                seedResponse.WorldSeed=currentWorld.m_seedName;
+                seedResponse.WorldName=currentWorld.m_name;
+                return seedResponse;
+            }
             if(Minimap.instance==null||ZoneSystem.instance==null)throw new InvalidOperationException("The map is not ready yet.");
             Context(player);
             if(req.Command=="map-scan")

@@ -17,7 +17,8 @@ namespace UnityEngine {
 }
 namespace HarmonyLib { public static class AccessTools { public static System.Reflection.MethodInfo Method(Type t,string n,Type[] p){return t.GetMethod(n,p);} public static System.Reflection.FieldInfo Field(Type t,string n){return t.GetField(n);} } }
 public class Player { public static Player m_localPlayer; public Transform transform=new Transform(); }
-public class ZNet { public static ZNet instance=new ZNet(); public bool Server; public long World=1; public long GetWorldUID(){return World;} public bool IsServer(){return Server;} }
+public class World { public string m_seedName; public string m_name; }
+public class ZNet { public static ZNet instance=new ZNet(); public bool Server; public long World=1; public World Data; public World GetWorld(){return Data;} public long GetWorldUID(){return World;} public bool IsServer(){return Server;} }
 public class ZoneSystem {
     public static ZoneSystem instance=new ZoneSystem();
     public class Definition { public string m_prefabName; }
@@ -42,6 +43,12 @@ class MapToolsTests {
     static void Reject(Action action,string label){try{action();}catch(ArgumentException){count++;return;}throw new Exception(label);}
     static int Main(){
         Player.m_localPlayer=new Player();
+        ZNet.instance.Data=new World{m_seedName="AbC012xYz9",m_name="Test world"};
+        var seed=Run("map-seed");Check(seed.WorldSeed=="AbC012xYz9"&&seed.WorldName=="Test world","Remote seed is read exactly with case preserved");
+        var seedCopy=Wire.Decode<Response>(Wire.Encode(seed));Check(seedCopy.WorldSeed==seed.WorldSeed&&seedCopy.WorldName==seed.WorldName,"Seed response survives serialization");
+        ZNet.instance.Data=new World{m_seedName="ChangedSeed",m_name="Second world"};Check(Run("map-seed").WorldSeed=="ChangedSeed","Seed is read fresh after world changes");
+        ZNet.instance.Data=null;bool unavailable=false;try{Run("map-seed");}catch(InvalidOperationException){unavailable=true;}Check(unavailable,"Missing world cannot return a stale seed");
+        Check(Run("map-results").WorldSeed==null,"Regular map requests do not expose seed");
         ZoneSystem.instance.Locations.Add(new ZoneSystem.Location{m_location=new ZoneSystem.Definition{m_prefabName="SecretCrypt"},m_position=new Vector3(100,0,0)});
         ZoneSystem.instance.Icons.Add(new Vector3(400,0,0),"Haldor");
         var remote=Run("map-scan","locations");Check(remote.Entries.Count==1&&remote.Entries[0].Name=="Haldor","Remote clients cannot expose host records");

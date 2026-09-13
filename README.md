@@ -17,7 +17,9 @@ All **54 feature controls** are implemented against **Valheim 1.0.12 / Steam bui
 
 The **Map tools** page adds world/nearby location scans, loaded resource scans within 200 m, prefab-name search, temporary selected/matching pins, and full fog reveal. Locally hosted worlds expose their recorded locations; remote clients show only server-provided markers, not the server's complete location list. Resource results are snapshots and can include depleted objects. No seed cracking or procedural world generation is performed. Pins are not saved, duplicate requests do not add duplicates, and Remove my pins preserves user pins. Fog reveal requires confirmation, runs in batches over multiple frames, and is saved normally by Valheim; it cannot be undone through this menu. Name-filter pinning is capped at 250 results per request and 500 temporary pins in total.
 
-Map command behavior has 14 isolated checks covering host/client visibility, scan radius, pin ownership and duplication, world changes, and reveal confirmation. The updated runtime compiles against the installed 1.0.12 assemblies; live map behavior still needs verification after restarting the game with the updated helper.
+Map tools also includes Show seed and Copy seed, which read the current world seed received by the client. Seed values are returned only for an explicit seed request, are not stored in preferences, and are copied only when Copy seed is clicked. No server installation is needed.
+
+Map command behavior has 19 isolated checks covering host/client visibility, scan radius, pin ownership and duplication, world changes, and reveal confirmation. The updated runtime compiles against the installed 1.0.12 assemblies; live map behavior still needs verification after restarting the game with the updated helper.
 
 The original 23 controls passed single-player tests and user playtesting. The expanded build passes **127 automated protocol checks, 69 live integration checks, 85 runtime behavior checks, and 14 desktop interaction checks**. See [the validation report](docs/validation.md) for tested behavior and remaining limits. Multiplayer remains unverified.
 
