@@ -130,7 +130,8 @@ namespace SteamManagerRuntime
                         ComputeComfort();
                     }
                 }
-                if (DateTime.UtcNow.Ticks - Interlocked.Read(ref lastContact) > TimeSpan.FromSeconds(15).Ticks && Features.Any(x => x.Enabled)) { Reset(); Log("Desktop heartbeat lost; runtime controls reset."); }
+                if (DateTime.UtcNow.Ticks - Interlocked.Read(ref lastContact) > TimeSpan.FromSeconds(15).Ticks && (Features.Any(x => x.Enabled)||BlueprintTools.Active)) { Reset(); Log("Desktop heartbeat lost; runtime controls reset."); }
+                BlueprintTools.Tick(player);
                 Job job;
                 for (int i = 0; i < 8 && queue.TryDequeue(out job); i++)
                 {
@@ -165,6 +166,7 @@ namespace SteamManagerRuntime
             if (p == null || p.IsDead()) throw new InvalidOperationException("Enter a world with a living character first.");
             if(req.Command=="discoveries"||req.Command=="discover-ingredients"||req.Command=="discover-all")return Discovery.Handle(req,p);
             if(req.Command!=null&&req.Command.StartsWith("map-",StringComparison.Ordinal))return MapTools.Handle(req,p);
+            if(req.Command!=null&&req.Command.StartsWith("blueprint-",StringComparison.Ordinal))return BlueprintTools.Handle(req,p);
             if(req.Command=="profile")
             {
                 if(req.Settings==null||req.Settings.Count>100)throw new ArgumentException("Invalid profile.");
@@ -275,6 +277,7 @@ namespace SteamManagerRuntime
                 foreach (var f in Features) f.Enabled = false;
                 if (altered && trackedPlayer != null) Apply(trackedPlayer);
                 Extended.RestoreGlobal();
+                BlueprintTools.Clear();
             }
             catch (Exception e) { Log("Reset: " + e.Message); }
             finally { resetting = false; }

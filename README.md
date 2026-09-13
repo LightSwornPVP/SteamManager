@@ -2,6 +2,17 @@
 
 A Windows desktop trainer prototype for the Steam edition of Valheim, targeting the Deep North release.
 
+
+## Blueprint tools (first implementation)
+
+The Blueprints page imports PlanBuild `.blueprint` and BuildShare `.vbuild` geometry and exports captured player-built pieces as `.blueprint`. Select a capture radius (1–50 m) around your character to save nearby building pieces. This is a radius selection, not a connected-building selection. Import a file, inspect unavailable pieces/materials/warnings, then use Show / update preview. The anchor starts 6 m ahead of the character; X, height, Z and rotation apply when the preview button is clicked. Move preview here changes the anchor to your current position plus 6 m forward.
+
+The preview draws meshes only and creates no networked pieces. Place blueprint requires confirmation, validates distance and protected/no-build areas, and uses Valheim's `Player.PlacePiece` to create ordinary building pieces at up to ten per second. Materials and crafting stations are required unless Free crafting (#36) or the game's no-cost mode is enabled. Cancel, closing SteamManager, loss of its heartbeat, character changes or leaving the world stop subsequent placement; already placed pieces remain. Normal structural support applies. Collision, ground alignment and all vanilla placement conditions are **not** comprehensively reproduced, and no undo is provided yet.
+
+Limits: 500 pieces, 512 KB input, normal-scale build-tool pieces, all placements within 100 m of the character. Terrain changes, custom snap markers, container contents, sign text, item-stand data and other extra state are excluded and reported on import. Scaled pieces are rejected. Unknown/disabled pieces block preview and placement. No PlanBuild/BepInEx installation or server mod is needed. Multiplayer placement and preview rendering still require live verification on this build; test in a disposable world first. [StarterPlatform.blueprint](examples/StarterPlatform.blueprint) is a four-piece test fixture.
+
+Format handling was checked against [PlanBuild's format reader](https://github.com/sirskunkalot/PlanBuild/tree/master/PlanBuild/Blueprints). The implementation has 20 isolated format checks alongside the existing protocol/map checks. File and command data are validated independently before use.
+
 ## Requirements
 
 - Standalone desktop controls with toggles, sliders, and hotkeys.

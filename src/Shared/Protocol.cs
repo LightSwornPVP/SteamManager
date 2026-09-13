@@ -19,6 +19,8 @@ namespace SteamManagerProtocol
         [DataMember] public int Quality;
         [DataMember] public bool Confirmed;
         [DataMember] public List<Feature> Settings;
+        [DataMember] public BlueprintDocument Blueprint;
+        [DataMember] public float X,Y,Z,Yaw;
     }
     [DataContract] public class Feature
     {
@@ -51,6 +53,7 @@ namespace SteamManagerProtocol
         [DataMember] public string Player;
         [DataMember] public string WorldSeed;
         [DataMember] public string WorldName;
+        [DataMember] public BlueprintDocument Blueprint;
         [DataMember] public bool Multiplayer;
         [DataMember] public int Protocol = 3;
         [DataMember] public List<Feature> Features;

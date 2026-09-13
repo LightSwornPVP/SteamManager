@@ -1,0 +1,9 @@
+#Name:Starter platform
+#Creator:SteamManager
+#Description:"Four vanilla wood floor pieces for disposable-world testing"
+#Category:Building
+#Pieces
+wood_floor;Building;0;0;0;0;0;0;1;null;1;1;1
+wood_floor;Building;2;0;0;0;0;0;1;null;1;1;1
+wood_floor;Building;0;0;2;0;0;0;1;null;1;1;1
+wood_floor;Building;2;0;2;0;0;0;1;null;1;1;1

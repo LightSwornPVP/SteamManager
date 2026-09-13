@@ -29,6 +29,7 @@ $helperRefs = @('mscorlib.dll','System.dll','System.Core.dll','System.Runtime.Se
 $argsHelper = @('/nologo','/target:library','/platform:x64','/optimize+','/langversion:latest','/nostdlib+',('/out:' + (Join-Path $outDir 'SteamManager.Runtime.dll')),('/reference:' + (Join-Path $outDir '0Harmony.dll')))
 foreach ($reference in $helperRefs) { $argsHelper += '/reference:' + (Join-Path $managed $reference) }
 $argsHelper += $common
+$argsHelper += Join-Path $projectRoot 'src\Shared\BlueprintFile.cs'
 $argsHelper += Join-Path $projectRoot 'src\Shared\DiscoveryRecords.cs'
 $argsHelper += (Get-ChildItem (Join-Path $projectRoot 'src\Runtime\*.cs')).FullName
 & $compiler @argsHelper
@@ -36,6 +37,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Runtime compilation failed.' }
 }
 $common = Join-Path $projectRoot 'src\Shared\Protocol.cs'
 $argsDesktop = @('/nologo','/target:winexe','/platform:x64','/optimize+','/langversion:latest','/reference:System.Windows.Forms.dll','/reference:System.Drawing.dll','/reference:System.Runtime.Serialization.dll',('/out:' + (Join-Path $outDir 'SteamManager.exe')),$common)
+$argsDesktop += Join-Path $projectRoot 'src\Shared\BlueprintFile.cs'
 $argsDesktop += (Get-ChildItem (Join-Path $projectRoot 'src\Desktop\*.cs')).FullName
 & $compiler @argsDesktop
 if ($LASTEXITCODE -ne 0) { throw 'Desktop compilation failed.' }

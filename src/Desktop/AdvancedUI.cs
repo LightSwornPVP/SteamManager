@@ -44,6 +44,7 @@ namespace SteamManagerDesktop
         void BuildAdvanced()
         {
             BuildMapTools();
+            BuildBlueprintTools();
             var inventory=Browser("inventory","Carried inventory");var count=new NumericUpDown{Minimum=1,Maximum=100000,Value=1,Width=90};inventory.Actions.Controls.Add(count);inventory.List.SelectedIndexChanged+=(s,e)=>{if(inventory.Selected!=null){count.Maximum=Math.Max(1,inventory.Selected.Max);count.Value=Math.Max(1,Math.Min(count.Maximum,(decimal)inventory.Selected.Value));}};
             ActionButton(inventory,"Set stack quantity","inventory-edit",()=>new Request{Text=inventory.Selected?.Id,Quantity=(int)count.Value});ActionButton(inventory,"Repair selected","inventory-repair");
             var buffs=Browser("buffs","Status effects");var duration=new NumericUpDown{Minimum=0,Maximum=86400,Width=100};buffs.Actions.Controls.Add(new Label{Text="Seconds (0 = default)",AutoSize=true});buffs.Actions.Controls.Add(duration);ActionButton(buffs,"Apply selected effect","buff-add",()=>new Request{Text=buffs.Selected?.Id,Value=(float)duration.Value});ActionButton(buffs,"Remove selected effect","buff-remove");
