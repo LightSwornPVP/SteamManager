@@ -31,7 +31,7 @@ static class ProtocolTests
         Check(!new Request().Confirmed,"Achievement unlock never confirmed by default");
         var profile=Wire.Decode<Request>(Wire.Encode(new Request{Command="profile",Settings=catalog.Where(x=>!x.Action).ToList()}));
         Check(profile.Settings.Count==catalog.Count(x=>!x.Action),"Profile round trip");
-        bool oversized=false;try{Wire.Decode<Request>(new string('x',2000001));}catch(System.IO.InvalidDataException){oversized=true;}Check(oversized,"Oversized payload rejected");
+        bool oversized=false;try{Wire.Decode<Request>(new string('x',8000001));}catch(System.IO.InvalidDataException){oversized=true;}Check(oversized,"Oversized payload rejected");
         var known=new System.Collections.Generic.HashSet<string>{"Wood"};
         var pickups=new System.Collections.Generic.Dictionary<string,float>{{"Wood",8},{"Stone",0}};
         var other=new System.Collections.Generic.Dictionary<string,float>{{"Other",99}};

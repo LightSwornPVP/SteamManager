@@ -8,12 +8,11 @@ namespace SteamManagerRuntime
 {
     public static class BlueprintTools
     {
-        sealed class Visual { public Mesh Mesh; public Matrix4x4 Local; public int Index; public Material[] Materials; }
         static BlueprintDocument document;
         static Piece[] prefabs;
-        static readonly List<Visual> visuals=new List<Visual>();
+        static BlueprintPreview scene;
+        static GameObject[] models;
         static readonly List<string> missing=new List<string>();
-        static Material material;
         static Player owner;
         static long world;
         static Vector3 origin,offset;
@@ -47,8 +46,7 @@ namespace SteamManagerRuntime
         public static void Clear()
         {
             if(building)status="Stopped after "+placed+" pieces. Already placed pieces remain in the world.";
-            building=false;preview=false;visuals.Clear();
-            if(material!=null)UnityEngine.Object.Destroy(material);material=null;
+            building=false;preview=false;scene?.Dispose();scene=null;
         }
         static Vector3 Position(BlueprintPiece p)=>origin+offset+Quaternion.Euler(0,yaw,0)*new Vector3(p.X,p.Y,p.Z);
         static Quaternion Rotation(BlueprintPiece p)=>Quaternion.Euler(0,yaw,0)*new Quaternion(p.Qx,p.Qy,p.Qz,p.Qw);
@@ -62,7 +60,7 @@ namespace SteamManagerRuntime
         }
         static Response Snapshot(Player player)
         {
-            var r=Bridge.Snapshot(building?"Building: "+placed+" / "+document.Pieces.Count+". Cancel stops further placement.":status);
+            var r=Bridge.Snapshot(building?"Building: "+placed+" / "+document.Pieces.Count+". Cancel stops further placement.":preview&&scene!=null?scene.Description:status);
             r.Entries=missing.Select(x=>new Entry{Id=x,Name="Unavailable: "+x,Description="Missing, disabled, or not an available building-tool piece. Placement is blocked."}).ToList();
             foreach(var x in Costs())r.Entries.Add(new Entry{Id=x.Key,Name=Localization.instance.Localize(x.Key)+" × "+x.Value,Value=x.Value,Description="Base materials: "+x.Value+" • carried: "+player.GetInventory().CountItems(x.Key)+". Free crafting (#36) skips costs."});
             if(document!=null)foreach(var warning in document.Warnings??new List<string>())r.Entries.Add(new Entry{Id=warning,Name=warning,Description=warning});
@@ -75,7 +73,7 @@ namespace SteamManagerRuntime
             if(req.Command=="blueprint-status")return Snapshot(p);
             if(req.Command=="blueprint-style")
             {
-                SetStyle(req.Text);
+                SetStyle(req.Text);if(scene!=null)scene.Real=realMaterials;
                 if(preview)status="Local preview: "+(realMaterials?"real textures and materials (solid appearance).":"translucent teal ghost.")+" Visual only; pieces have not been placed.";
                 return Snapshot(p);
             }
@@ -94,51 +92,37 @@ namespace SteamManagerRuntime
                     Vector3 pos=piece.transform.position-p.transform.position;var rot=piece.transform.rotation;
                     doc.Pieces.Add(new BlueprintPiece{Prefab=name,X=pos.x,Y=pos.y,Z=pos.z,Qx=rot.x,Qy=rot.y,Qz=rot.z,Qw=rot.w});
                 }
-                BlueprintFile.Validate(doc);var result=Bridge.Snapshot("Captured "+doc.Pieces.Count+" player-built pieces within "+req.Value+" m. Geometry only; container contents, signs and terrain are excluded.");result.Blueprint=doc;return result;
+                BlueprintFile.ValidatePlacement(doc);var result=Bridge.Snapshot("Captured "+doc.Pieces.Count+" player-built pieces within "+req.Value+" m. Geometry only; container contents, signs and terrain are excluded.");result.Blueprint=doc;return result;
             }
             if(req.Command=="blueprint-prepare")
             {
                 BlueprintFile.Validate(req.Blueprint);Clear();document=req.Blueprint;placed=0;
-                var available=Available();prefabs=new Piece[document.Pieces.Count];missing.Clear();
-                for(int i=0;i<prefabs.Length;i++){Piece prefab;if(available.TryGetValue(document.Pieces[i].Prefab,out prefab))prefabs[i]=prefab;else if(!missing.Contains(document.Pieces[i].Prefab))missing.Add(document.Pieces[i].Prefab);}
+                var available=Available();prefabs=new Piece[document.Pieces.Count];models=new GameObject[document.Pieces.Count];missing.Clear();
+                for(int i=0;i<prefabs.Length;i++)
+                {
+                    Piece prefab;string name=document.Pieces[i].Prefab;
+                    if(available.TryGetValue(name,out prefab)){prefabs[i]=prefab;models[i]=prefab.gameObject;}
+                    else {models[i]=ZNetScene.instance.GetPrefab(name);document.PreviewOnly=true;if(!missing.Contains(name))missing.Add(name);}
+                }
+                if(document.Pieces.Count>BlueprintFile.MaxPlacementPieces||document.Pieces.Any(BlueprintFile.Scaled))document.PreviewOnly=true;
                 origin=p.transform.position+p.transform.forward*6;offset=Vector3.zero;yaw=0;
-                status=document.Name+": "+document.Pieces.Count+" pieces. "+(missing.Count==0?"Ready to preview. Anchor starts 6 m in front of you.":missing.Count+" unavailable piece types; placement blocked.");
+                status=document.Name+": "+document.Pieces.Count+" pieces. "+(missing.Count==0?"Ready to preview. Anchor starts 6 m in front of you.":missing.Count+" non-buildable or missing types; available models can still be previewed.")+(document.PreviewOnly?" PREVIEW ONLY — placement blocked.":"");
                 return Snapshot(p);
             }
             if(document==null)throw new InvalidOperationException("Load a blueprint first.");
             if(req.Command=="blueprint-preview")
             {
                 SetStyle(req.Text);
-                if(missing.Count>0)throw new InvalidOperationException("Resolve the unavailable pieces before previewing or placing.");
                 foreach(float f in new[]{req.X,req.Y,req.Z,req.Yaw})if(float.IsNaN(f)||float.IsInfinity(f)||Math.Abs(f)>360)throw new ArgumentException("Invalid preview offset or rotation.");
                 if(req.Enabled)origin=p.transform.position+p.transform.forward*6;
                 offset=new Vector3(req.X,req.Y,req.Z);yaw=req.Yaw;
-                if(material==null)
-                {
-                    var shader=Shader.Find("Sprites/Default")??Shader.Find("UI/Default");if(shader==null)throw new InvalidOperationException("Preview shader unavailable.");
-                    material=new Material(shader){color=new Color(0.04f,0.3f,0.23f,0.3f)};
-                    visuals.Clear();int draws=0;
-                    for(int i=0;i<prefabs.Length;i++)
-                    {
-                        var lowerDetail=new HashSet<Renderer>();var highestDetail=new HashSet<Renderer>();
-                        foreach(var group in prefabs[i].GetComponentsInChildren<LODGroup>(true))
-                        {var levels=group.GetLODs();for(int level=0;level<levels.Length;level++)foreach(var renderer in levels[level].renderers){if(level==0)highestDetail.Add(renderer);else lowerDetail.Add(renderer);}}
-                        lowerDetail.ExceptWith(highestDetail);
-                        foreach(var mesh in prefabs[i].GetComponentsInChildren<MeshFilter>(true))
-                        {
-                            var renderer=mesh.GetComponent<MeshRenderer>();
-                            if(mesh.sharedMesh==null||renderer==null||!renderer.enabled||lowerDetail.Contains(renderer)||!VisiblePart(mesh.transform,prefabs[i].transform))continue;
-                            draws+=mesh.sharedMesh.subMeshCount;if(draws>3000){Clear();throw new InvalidOperationException("Blueprint has too many meshes for a responsive preview. Use a smaller selection.");}
-                            visuals.Add(new Visual{Index=i,Mesh=mesh.sharedMesh,Local=prefabs[i].transform.worldToLocalMatrix*mesh.transform.localToWorldMatrix,Materials=renderer.sharedMaterials});
-                        }
-                    }
-                    if(visuals.Count==0){Clear();throw new InvalidOperationException("No supported meshes found for preview.");}
-                }
+                scene?.Dispose();scene=new BlueprintPreview(document,models,Matrix4x4.TRS(origin+offset,Quaternion.Euler(0,yaw,0),Vector3.one),realMaterials);
                 preview=true;status="Local preview: "+document.Pieces.Count+" pieces, "+(realMaterials?"real materials":"teal ghost")+". Adjust offsets/rotation, then Place blueprint. No world objects created.";
                 return Snapshot(p);
             }
             if(req.Command=="blueprint-place")
             {
+                BlueprintFile.ValidatePlacement(document);
                 if(!req.Confirmed||!preview||missing.Count>0)throw new InvalidOperationException("Preview the blueprint and confirm placement first.");
                 free=Bridge.On(36)||p.NoCostCheat();
                 for(int i=0;i<prefabs.Length;i++)ValidateSite(p,i);
@@ -162,11 +146,6 @@ namespace SteamManagerRuntime
             if(style!=null&&style!="real"&&style!="ghost")throw new ArgumentException("Unknown preview style.");
             realMaterials=style!="ghost";
         }
-        static bool VisiblePart(Transform part,Transform root)
-        {
-            for(var node=part;node!=null&&node!=root;node=node.parent)if(!node.gameObject.activeSelf)return false;
-            return true;
-        }
         public static void Tick(Player p)
         {
             if(!Active)return;
@@ -185,18 +164,7 @@ namespace SteamManagerRuntime
                     if(!free&&!ZoneSystem.instance.GetGlobalKey(prefab.FreeBuildKey()))p.ConsumeResources(prefab.m_resources,0);
                     if(placed==prefabs.Length){building=false;status="Placed "+placed+" pieces. The game saves them normally; structural support still applies.";Clear();}
                 }
-                else if(preview)
-                {
-                    foreach(var v in visuals)
-                    {
-                        var piece=document.Pieces[v.Index];var matrix=Matrix4x4.TRS(Position(piece),Rotation(piece),prefabs[v.Index].transform.localScale)*v.Local;
-                        for(int sub=0;sub<v.Mesh.subMeshCount;sub++)
-                        {
-                            var drawMaterial=realMaterials&&sub<v.Materials.Length&&v.Materials[sub]!=null?v.Materials[sub]:material;
-                            Graphics.DrawMesh(v.Mesh,matrix,drawMaterial,0,null,sub);
-                        }
-                    }
-                }
+                else if(preview)scene?.Tick();
             }
             catch(Exception e){Clear();status="Stopped after "+placed+" pieces: "+e.GetBaseException().Message+" Already placed pieces remain.";Bridge.Log("Blueprint operation stopped: "+e.GetType().Name);}
         }

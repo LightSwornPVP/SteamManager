@@ -12,18 +12,21 @@ namespace SteamManagerDesktop
         void BuildBlueprintTools()
         {
             var page=Browser("blueprint-status","Blueprints");page.Actions.Height=230;page.Detail.Height=65;
-            var status=new Label{Dock=DockStyle.Top,Height=65,ForeColor=Muted,Text="Import .blueprint / .vbuild, or capture nearby player-built pieces. Preview is local. Placement creates real pieces visible to other players. First version: up to 500 pieces; no terrain or extra piece data."};
+            var status=new Label{Dock=DockStyle.Top,Height=65,ForeColor=Muted,Text="Import .blueprint / .vbuild, or capture nearby player-built pieces. Preview is local. Placement creates real pieces visible to other players. First version: up to 12,000 preview objects; placement stays limited to 500 normal pieces. Terrain and extra data are excluded."};
             page.Page.Controls.Add(status);status.SendToBack();
             var name=new TextBox{Width=180,Text="My building",MaxLength=160};
             var radius=new NumericUpDown{Width=65,Minimum=1,Maximum=50,Value=10};
             page.Actions.Controls.Add(new Label{Text="Capture name",AutoSize=true});page.Actions.Controls.Add(name);
             page.Actions.Controls.Add(new Label{Text="Radius (m)",AutoSize=true});page.Actions.Controls.Add(radius);
+            var previewOnly=new CheckBox{Text="Preview only (block placement)",AutoSize=true,Checked=true};
+            page.Actions.Controls.Add(previewOnly);page.Actions.SetFlowBreak(previewOnly,true);
             var import=Button("Import blueprint",async()=>{
                 using(var dialog=new OpenFileDialog{Filter="Blueprints|*.blueprint;*.vbuild",CheckFileExists=true})
                 {
                     if(dialog.ShowDialog(this)!=DialogResult.OK)return;
-                    if(new FileInfo(dialog.FileName).Length>512000)throw new InvalidDataException("Blueprint exceeds 512 KB.");
+                    if(new FileInfo(dialog.FileName).Length>BlueprintFile.MaxFileBytes)throw new InvalidDataException("Blueprint exceeds 2 MB.");
                     var doc=BlueprintFile.Parse(File.ReadAllText(dialog.FileName),Path.GetExtension(dialog.FileName),Path.GetFileNameWithoutExtension(dialog.FileName));
+                    doc.PreviewOnly=doc.PreviewOnly||previewOnly.Checked;
                     await Run(()=>Client.Send(new Request{Command="blueprint-prepare",Blueprint=doc}),false,false,r=>{status.Text=r.Message;page.Entries=r.Entries??new List<Entry>();page.Filter();});
                 }
             });page.Actions.Controls.Add(import);gameControls.Add(import);
@@ -40,7 +43,7 @@ namespace SteamManagerDesktop
             {page.Actions.Controls.Add(new Label{Text=axis,AutoSize=true});var value=new NumericUpDown{Width=75,Minimum=axis=="Rotation"?-360:-100,Maximum=axis=="Rotation"?360:100,DecimalPlaces=1,Increment=axis=="Rotation"?15:0.5m};page.Actions.Controls.Add(value);axes.Add(value);}
             page.Actions.SetFlowBreak(axes[3],true);
             bool polling=false;
-            Action<Response> update=r=>{status.Text=r.Message;page.Entries=r.Entries??new List<Entry>();page.Filter();polling=r.Message!=null&&r.Message.StartsWith("Building:");};
+            Action<Response> update=r=>{status.Text=r.Message;page.Entries=r.Entries??new List<Entry>();page.Filter();polling=r.Message!=null&&(r.Message.StartsWith("Building:")||r.Message.StartsWith("Preparing preview:"));};
             var realPreview=new CheckBox{Text="Real textures and materials (solid preview)",AutoSize=true,Checked=true};
             page.Actions.Controls.Add(realPreview);page.Actions.SetFlowBreak(realPreview,true);
             bool loadingStyle=true;
@@ -53,6 +56,7 @@ namespace SteamManagerDesktop
             };
             Action<string,string,bool> add=(label,command,here)=>{
                 var button=Button(label,async()=>{
+                    if(command=="blueprint-place"&&previewOnly.Checked){message.Text="Preview-only mode blocks placement.";return;}
                     if(command=="blueprint-place"&&MessageBox.Show(this,"Place the preview as real building pieces? Materials are consumed unless Free crafting (#36) is enabled. Pieces are visible to other players and saved by the game. Structural support still applies; overlap/terrain checks are limited. Cancel stops future pieces but does not undo those already placed.","Place blueprint",MessageBoxButtons.YesNo,MessageBoxIcon.Question)!=DialogResult.Yes)return;
                     var request=new Request{Command=command,Text=realPreview.Checked?"real":"ghost",X=(float)axes[0].Value,Y=(float)axes[1].Value,Z=(float)axes[2].Value,Yaw=(float)axes[3].Value,Enabled=here,Confirmed=command=="blueprint-place"};
                     await Run(()=>Client.Send(request),false,false,update);

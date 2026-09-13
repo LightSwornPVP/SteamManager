@@ -67,7 +67,7 @@ namespace SteamManagerProtocol
         }
         public static T Decode<T>(string value)
         {
-            if (value == null || value.Length > 2000000) throw new InvalidDataException("Invalid message size.");
+            if (value == null || value.Length > 8000000) throw new InvalidDataException("Invalid message size.");
             using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(value))) return (T)new DataContractJsonSerializer(typeof(T)).ReadObject(stream);
         }
     }
