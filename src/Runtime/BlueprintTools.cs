@@ -8,7 +8,7 @@ namespace SteamManagerRuntime
 {
     public static class BlueprintTools
     {
-        sealed class Visual { public Mesh Mesh; public Matrix4x4 Local; public int Index; }
+        sealed class Visual { public Mesh Mesh; public Matrix4x4 Local; public int Index; public Material[] Materials; }
         static BlueprintDocument document;
         static Piece[] prefabs;
         static readonly List<Visual> visuals=new List<Visual>();
@@ -19,6 +19,7 @@ namespace SteamManagerRuntime
         static Vector3 origin,offset;
         static float yaw;
         static bool preview,building,free;
+        static bool realMaterials=true;
         static int placed;
         static float nextPlacement;
         static string status="Import a blueprint or capture nearby player-built pieces.";
@@ -72,6 +73,12 @@ namespace SteamManagerRuntime
             if(ObjectDB.instance==null||ZNet.instance==null)throw new InvalidOperationException("Enter a world first.");
             CheckContext(p);
             if(req.Command=="blueprint-status")return Snapshot(p);
+            if(req.Command=="blueprint-style")
+            {
+                SetStyle(req.Text);
+                if(preview)status="Local preview: "+(realMaterials?"real textures and materials (solid appearance).":"translucent teal ghost.")+" Visual only; pieces have not been placed.";
+                return Snapshot(p);
+            }
             if(req.Command=="blueprint-cancel"){Clear();if(placed==0)status="Preview cleared.";return Snapshot(p);}
             if(building)throw new InvalidOperationException("Wait for placement to finish or cancel it first.");
             if(req.Command=="blueprint-capture")
@@ -101,6 +108,7 @@ namespace SteamManagerRuntime
             if(document==null)throw new InvalidOperationException("Load a blueprint first.");
             if(req.Command=="blueprint-preview")
             {
+                SetStyle(req.Text);
                 if(missing.Count>0)throw new InvalidOperationException("Resolve the unavailable pieces before previewing or placing.");
                 foreach(float f in new[]{req.X,req.Y,req.Z,req.Yaw})if(float.IsNaN(f)||float.IsInfinity(f)||Math.Abs(f)>360)throw new ArgumentException("Invalid preview offset or rotation.");
                 if(req.Enabled)origin=p.transform.position+p.transform.forward*6;
@@ -108,13 +116,25 @@ namespace SteamManagerRuntime
                 if(material==null)
                 {
                     var shader=Shader.Find("Sprites/Default")??Shader.Find("UI/Default");if(shader==null)throw new InvalidOperationException("Preview shader unavailable.");
-                    material=new Material(shader){color=new Color(0.1f,1f,0.8f,0.35f)};
+                    material=new Material(shader){color=new Color(0.04f,0.3f,0.23f,0.3f)};
                     visuals.Clear();int draws=0;
-                    for(int i=0;i<prefabs.Length;i++)foreach(var mesh in prefabs[i].GetComponentsInChildren<MeshFilter>(true))
-                    {if(mesh.sharedMesh==null)continue;draws+=mesh.sharedMesh.subMeshCount;if(draws>3000){Clear();throw new InvalidOperationException("Blueprint has too many meshes for a responsive preview. Use a smaller selection.");}visuals.Add(new Visual{Index=i,Mesh=mesh.sharedMesh,Local=prefabs[i].transform.worldToLocalMatrix*mesh.transform.localToWorldMatrix});}
+                    for(int i=0;i<prefabs.Length;i++)
+                    {
+                        var lowerDetail=new HashSet<Renderer>();var highestDetail=new HashSet<Renderer>();
+                        foreach(var group in prefabs[i].GetComponentsInChildren<LODGroup>(true))
+                        {var levels=group.GetLODs();for(int level=0;level<levels.Length;level++)foreach(var renderer in levels[level].renderers){if(level==0)highestDetail.Add(renderer);else lowerDetail.Add(renderer);}}
+                        lowerDetail.ExceptWith(highestDetail);
+                        foreach(var mesh in prefabs[i].GetComponentsInChildren<MeshFilter>(true))
+                        {
+                            var renderer=mesh.GetComponent<MeshRenderer>();
+                            if(mesh.sharedMesh==null||renderer==null||!renderer.enabled||lowerDetail.Contains(renderer)||!VisiblePart(mesh.transform,prefabs[i].transform))continue;
+                            draws+=mesh.sharedMesh.subMeshCount;if(draws>3000){Clear();throw new InvalidOperationException("Blueprint has too many meshes for a responsive preview. Use a smaller selection.");}
+                            visuals.Add(new Visual{Index=i,Mesh=mesh.sharedMesh,Local=prefabs[i].transform.worldToLocalMatrix*mesh.transform.localToWorldMatrix,Materials=renderer.sharedMaterials});
+                        }
+                    }
                     if(visuals.Count==0){Clear();throw new InvalidOperationException("No supported meshes found for preview.");}
                 }
-                preview=true;status="Local preview: "+document.Pieces.Count+" pieces. Adjust offsets/rotation, then Place blueprint. No world objects created.";
+                preview=true;status="Local preview: "+document.Pieces.Count+" pieces, "+(realMaterials?"real materials":"teal ghost")+". Adjust offsets/rotation, then Place blueprint. No world objects created.";
                 return Snapshot(p);
             }
             if(req.Command=="blueprint-place")
@@ -137,6 +157,16 @@ namespace SteamManagerRuntime
             if(Vector3.Distance(player.transform.position,position)>100)throw new InvalidOperationException("All pieces must be within 100 m of your character.");
             if(Location.IsInsideNoBuildLocation(position)||!PrivateArea.CheckAccess(position,0,false))throw new InvalidOperationException("A piece overlaps a protected or no-build area.");
         }
+        static void SetStyle(string style)
+        {
+            if(style!=null&&style!="real"&&style!="ghost")throw new ArgumentException("Unknown preview style.");
+            realMaterials=style!="ghost";
+        }
+        static bool VisiblePart(Transform part,Transform root)
+        {
+            for(var node=part;node!=null&&node!=root;node=node.parent)if(!node.gameObject.activeSelf)return false;
+            return true;
+        }
         public static void Tick(Player p)
         {
             if(!Active)return;
@@ -157,7 +187,15 @@ namespace SteamManagerRuntime
                 }
                 else if(preview)
                 {
-                    foreach(var v in visuals){var piece=document.Pieces[v.Index];var matrix=Matrix4x4.TRS(Position(piece),Rotation(piece),prefabs[v.Index].transform.localScale)*v.Local;for(int sub=0;sub<v.Mesh.subMeshCount;sub++)Graphics.DrawMesh(v.Mesh,matrix,material,0,null,sub);}
+                    foreach(var v in visuals)
+                    {
+                        var piece=document.Pieces[v.Index];var matrix=Matrix4x4.TRS(Position(piece),Rotation(piece),prefabs[v.Index].transform.localScale)*v.Local;
+                        for(int sub=0;sub<v.Mesh.subMeshCount;sub++)
+                        {
+                            var drawMaterial=realMaterials&&sub<v.Materials.Length&&v.Materials[sub]!=null?v.Materials[sub]:material;
+                            Graphics.DrawMesh(v.Mesh,matrix,drawMaterial,0,null,sub);
+                        }
+                    }
                 }
             }
             catch(Exception e){Clear();status="Stopped after "+placed+" pieces: "+e.GetBaseException().Message+" Already placed pieces remain.";Bridge.Log("Blueprint operation stopped: "+e.GetType().Name);}

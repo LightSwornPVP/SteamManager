@@ -41,10 +41,20 @@ namespace SteamManagerDesktop
             page.Actions.SetFlowBreak(axes[3],true);
             bool polling=false;
             Action<Response> update=r=>{status.Text=r.Message;page.Entries=r.Entries??new List<Entry>();page.Filter();polling=r.Message!=null&&r.Message.StartsWith("Building:");};
+            var realPreview=new CheckBox{Text="Real textures and materials (solid preview)",AutoSize=true,Checked=true};
+            page.Actions.Controls.Add(realPreview);page.Actions.SetFlowBreak(realPreview,true);
+            bool loadingStyle=true;
+            Shown+=(s,e)=>{realPreview.Checked=preferences.BlueprintPreviewStyle!="ghost";loadingStyle=false;};
+            realPreview.CheckedChanged+=async(s,e)=>{
+                if(loadingStyle)return;
+                preferences.BlueprintPreviewStyle=realPreview.Checked?"real":"ghost";
+                try{SavePreferences();if(connected&&lastPlayer!=null)await Send(new Request{Command="blueprint-style",Text=preferences.BlueprintPreviewStyle});}
+                catch(Exception error){message.Text=error.GetBaseException().Message;}
+            };
             Action<string,string,bool> add=(label,command,here)=>{
                 var button=Button(label,async()=>{
                     if(command=="blueprint-place"&&MessageBox.Show(this,"Place the preview as real building pieces? Materials are consumed unless Free crafting (#36) is enabled. Pieces are visible to other players and saved by the game. Structural support still applies; overlap/terrain checks are limited. Cancel stops future pieces but does not undo those already placed.","Place blueprint",MessageBoxButtons.YesNo,MessageBoxIcon.Question)!=DialogResult.Yes)return;
-                    var request=new Request{Command=command,X=(float)axes[0].Value,Y=(float)axes[1].Value,Z=(float)axes[2].Value,Yaw=(float)axes[3].Value,Enabled=here,Confirmed=command=="blueprint-place"};
+                    var request=new Request{Command=command,Text=realPreview.Checked?"real":"ghost",X=(float)axes[0].Value,Y=(float)axes[1].Value,Z=(float)axes[2].Value,Yaw=(float)axes[3].Value,Enabled=here,Confirmed=command=="blueprint-place"};
                     await Run(()=>Client.Send(request),false,false,update);
                 });page.Actions.Controls.Add(button);gameControls.Add(button);
             };

@@ -13,7 +13,7 @@ namespace SteamManagerDesktop
 {
     [DataContract] public class SavedProfile { [DataMember] public string Name; [DataMember] public List<Feature> Features; public override string ToString()=>Name; }
     [DataContract] public class KeyBinding { [DataMember] public int Id; [DataMember] public int Key; [DataMember] public uint Modifiers; [DataMember] public bool Hold; public override string ToString()=>"#"+Id+"  "+(Keys)Key+"  "+((Modifiers&2)!=0?"Ctrl ":"")+((Modifiers&1)!=0?"Alt ":"")+((Modifiers&4)!=0?"Shift ":"")+(Hold?"(hold)":"(toggle)"); }
-    [DataContract] public class DesktopPreferences { [DataMember] public List<Feature> LastSettings; [DataMember] public List<SavedProfile> Profiles=new List<SavedProfile>(); [DataMember] public List<KeyBinding> Keys=new List<KeyBinding>(); }
+    [DataContract] public class DesktopPreferences { [DataMember] public string BlueprintPreviewStyle; [DataMember] public List<Feature> LastSettings; [DataMember] public List<SavedProfile> Profiles=new List<SavedProfile>(); [DataMember] public List<KeyBinding> Keys=new List<KeyBinding>(); }
     public sealed partial class MainForm
     {
         readonly Queue<Request> pendingRequests=new Queue<Request>();
